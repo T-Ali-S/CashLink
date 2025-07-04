@@ -27,12 +27,20 @@ export default function StartWithNothing() {
       if (!snap.exists()) return;
 
       const userInfo = snap.val();
+      const usedReferrals = userInfo.usedReferrals || {};
+
       const allUsersSnap = await get(ref(db, "users"));
       const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
 
-      const referrals = Object.values(allUsers).filter(
-        (u) => u.referredBy === user.uid && u.package
-      );
+      const excluded = Object.values(usedReferrals).flat();
+
+      const referrals = Object.entries(allUsers)
+        .filter(([uid, u]) => {
+          return (
+            u.referredBy === user.uid && u.package && !excluded.includes(uid)
+          );
+        })
+        .map(([uid, u]) => ({ uid, ...u }));
 
       const counts = {};
       Object.keys(packageGoals).forEach((pkg) => {
@@ -51,11 +59,28 @@ export default function StartWithNothing() {
     const goal = packageGoals[pkg].target;
     if (count < goal) return;
 
+    const allUsersSnap = await get(ref(db, "users"));
+    const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+
+    const existingUsed = userData.usedReferrals?.[pkg] || [];
+
+    const newRefs = Object.entries(allUsers)
+      .filter(
+        ([uid, u]) =>
+          u.referredBy === userData.uid &&
+          u.package &&
+          !existingUsed.includes(uid)
+      )
+      .slice(0, goal)
+      .map(([uid]) => uid);
+
     const updatedBalance = (userData.balance || 0) + packageGoals[pkg].reward;
 
     await update(ref(db, `users/${userData.uid}`), {
       balance: updatedBalance,
+      [`usedReferrals/${pkg}`]: [...existingUsed, ...newRefs],
     });
+
     await sendNotification(
       userData.uid,
       "🎁 Reward Claimed!",
@@ -65,8 +90,15 @@ export default function StartWithNothing() {
     alert(
       `🎉 You've earned Rs. ${packageGoals[pkg].reward} for ${pkg} referrals!`
     );
-    setUserData((prev) => ({ ...prev, balance: updatedBalance }));
-    setReferralCounts((prev) => ({ ...prev, [pkg]: 0 })); // reset progress
+    setUserData((prev) => ({
+      ...prev,
+      balance: updatedBalance,
+      usedReferrals: {
+        ...(prev.usedReferrals || {}),
+        [pkg]: [...existingUsed, ...newRefs],
+      },
+    }));
+    setReferralCounts((prev) => ({ ...prev, [pkg]: 0 }));
   };
 
   return (

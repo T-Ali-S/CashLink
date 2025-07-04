@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ref, get, update } from "firebase/database";
 import { db } from "../../../firebase";
+import TransactionAdminView from "../user/TransactionAdminView";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 
 export default function ManageUser() {
@@ -134,6 +135,7 @@ export default function ManageUser() {
 
       <p className="text-white">Email: {userInfo.email}</p>
       <p className="mb-4 text-sm text-gold200">UID: {uid}</p>
+      
 
       <div className="mt-4">
         <h4 className="font-semibold text-white">
@@ -158,6 +160,13 @@ export default function ManageUser() {
         >
           Assign Package
         </button>
+
+        <h4 className="text-lg font-bold mt-6 text-yellow-400">
+        Withdrawal Requests
+      </h4>
+
+      {userInfo && <TransactionAdminView userId={uid} />}
+
         <div className="mt-8 bg-white p-4 rounded shadow">
           <h3 className="text-lg font-semibold mb-2">Referral Info</h3>
 

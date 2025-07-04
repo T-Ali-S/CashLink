@@ -15,6 +15,7 @@ import ReferralList from "./ReferralList";
 import ProfileEditor from "../Profile/ProfileEditor";
 import NotificationPanel from "./NotificationPanel";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import TransactionLog from "./TransactionLog";
 
 export default function Profile() {
   const [userData, setUserData] = useState(null);
@@ -133,7 +134,7 @@ export default function Profile() {
   }, []);
 
   return (
-    <div className="min-h-screen text-white p-6">
+    <div className="min-h-screen text-white px-4 sm:px-6 md:px-10 py-6">
       {alert.visible && (
         <Alert
           type={alert.type}
@@ -175,23 +176,27 @@ export default function Profile() {
         </h2>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-700 pb-2 text-sm sm:text-base">
-          {["profile", "notifications", "referrals"].map((tab) => (
-            <button
-              key={tab}
-              className={`px-3 py-1 rounded-md ${
-                activeTab === tab
-                  ? "bg-gold200 text-white"
-                  : "hover:text-gray-300"
-              }`}
-              onClick={() => {
-                setActiveTab(tab);
-                navigate(`/profile?tab=${tab}`);
-              }}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="overflow-x-auto">
+          <div className="flex gap-4 mb-8 border-b border-gray-700 pb-2 text-sm sm:text-base w-max md:w-full">
+            {["profile", "notifications", "referrals", "transaction"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  className={`px-3 py-1 rounded-md ${
+                    activeTab === tab
+                      ? "bg-gold200 text-white"
+                      : "hover:text-gray-300"
+                  }`}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    navigate(`/profile?tab=${tab}`);
+                  }}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              )
+            )}
+          </div>
         </div>
 
         {/* Active Tab Content */}
@@ -199,6 +204,8 @@ export default function Profile() {
           <ReferralList />
         ) : activeTab === "notifications" ? (
           <NotificationPanel />
+        ) : activeTab === "transaction" ? (
+          <TransactionLog />
         ) : activeTab === "profile" ? (
           <ProfileEditor
             selectedAvatar={selectedAvatar}

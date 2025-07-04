@@ -10,6 +10,9 @@ import RequireAdmin from './component/Others/RequireAdmin';
 import ManageUser from "./component/Admin/user/uid";
 import StartWithNothing from './component/Others/StartWithNothing';
 import NotificationPanel from './component/Others/NotificationPanel';
+import Withdraw from './component/Others/Withdraw';
+import TransactionLog from './component/Others/TransactionLog';
+import TransactionAdminView from './component/Admin/user/TransactionAdminView';
 
 
 function App() {
@@ -83,6 +86,36 @@ function App() {
     <>
       <Navbar />
       <NotificationPanel />
+    </>
+  ),
+}
+,
+    {
+  path: "/withdraw",
+  element: (
+    <>
+      <Navbar />
+      <Withdraw />
+    </>
+  ),
+}
+,
+    {
+  path: "/transactions",
+  element: (
+    <>
+      <Navbar />
+      <TransactionLog />
+    </>
+  ),
+}
+,
+    {
+  path: "/transactionsAdminView",
+  element: (
+    <>
+      <Navbar />
+      <TransactionAdminView />
     </>
   ),
 }

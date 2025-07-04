@@ -3,6 +3,6 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-r from-green-800 to-gold200;
+  @apply bg-gradient-to-r from-green-900 to-gold200;
   color:white;
 }

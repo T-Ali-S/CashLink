@@ -13,13 +13,62 @@ export default function Home() {
   const location = useLocation();
   const packageRef = useRef(null);
 
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const snapshot = await get(ref(db, `users/${user.uid}`));
         if (snapshot.exists()) {
           const data = snapshot.val();
+          if (data.package !== "elite") {
+            const allUsersSnap = await get(ref(db, "users"));
+            const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+
+            const referrals = Object.values(allUsers).filter(
+              (u) => u.referredBy === user.uid
+            );
+            const activated = referrals.filter((u) => u.package);
+
+            const packageRewards = {
+              bronze: 6300,
+              silver: 10500,
+              gold: 21000,
+              diamond: 50000,
+            };
+
+            const reward = packageRewards[data.package] || 0;
+            // 🚨 Defensive check for unexpected package values
+            if (data.package !== "elite" && !packageRewards[data.package]) {
+              console.warn("⚠️ Unrecognized package:", data.package);
+            }
+
+            const now = Date.now();
+            const last = data.lastPayoutAt || 0;
+            const oneDay = 24 * 60 * 60 * 1000;
+
+            if (now - last >= oneDay) {
+              const baseBonus = 300;
+              const fullPaid =
+                data?.milestones?.[data.package]?.rewarded || false;
+
+              if (activated.length >= 3 && !fullPaid) {
+                // All referrals are active → give full reward
+                await update(ref(db, `users/${user.uid}`), {
+                  balance: (data.balance || 0) + reward,
+                  lastPayoutAt: now,
+                  [`milestones/${data.package}/rewarded`]: true,
+                });
+                console.log("🎯 Full reward granted instantly:", reward);
+              } else {
+                // Incomplete → grow at 10% daily
+                const growth = (reward - baseBonus) * 0.1;
+                await update(ref(db, `users/${user.uid}`), {
+                  balance: (data.balance || 0) + growth,
+                  lastPayoutAt: now,
+                });
+                console.log("⏳ ROI added at 10% growth:", growth);
+              }
+            }
+          }
           if (data.package === "elite") {
             const now = Date.now();
             const last = data.lastPayoutAt || 0;
@@ -58,7 +107,6 @@ export default function Home() {
     }
   }, [location]);
 
-
   return (
     <div className="max-w-6xl mx-auto p-4">
       <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center text-center md:text-left">
@@ -91,6 +139,27 @@ export default function Home() {
                   {userData.package.toUpperCase()}
                 </span>
               </p>
+              {/* Withdrawable Info */}
+              <p className="text-sm text-gray-500 mt-2">
+                Withdrawable:{" "}
+                <span className="text-green-700 font-bold">
+                  Rs.{" "}
+                  {(() => {
+                    const fullUnlocked =
+                      userData?.milestones?.[userData.package]?.rewarded ||
+                      userData.withdrawUnlocked;
+                    return fullUnlocked ? userData.balance || 0 : 300;
+                  })()}
+                </span>
+              </p>
+
+              {/* Withdraw Button */}
+              <button
+                onClick={() => navigate("/withdraw")}
+                className="mt-3 bg-blue-700 hover:bg-blue-600 text-white px-4 py-1 rounded"
+              >
+                Withdraw
+              </button>
             </div>
           ) : (
             <div>

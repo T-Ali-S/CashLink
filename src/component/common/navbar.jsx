@@ -177,6 +177,12 @@ export default function Navbar() {
                     >
                       Referrals
                     </Link>
+                    <Link
+                      to="/profile?tab=transaction"
+                      className="py-2 hover:text-yellow-600 "
+                    >
+                      Transaction Logs
+                    </Link>
                     {userData?.role === "admin" && (
                       <Link to="/admin" className="py-2 hover:text-yellow-600">
                         Admin Panel
@@ -224,16 +230,28 @@ export default function Navbar() {
                 <p className="text-sm text-gray-300 mb-2">{userData.email}</p>
                 <Link
                   to="/profile?tab=profile"
-                  className="block py-1 text-sm hover:text-yellow-400"
+                  className="block py-1 text-sm hover:text-yellow-600"
                 >
                   Profile
                 </Link>
                 <Link
-                  to="/notifications"
-                  className="block py-1 text-sm hover:text-yellow-400"
+                  to="/profile?tab=notifications"
+                  className="block py-1 text-sm hover:text-yellow-600"
                 >
                   Notifications
                 </Link>
+                <Link
+                      to="/profile?tab=referrals"
+                      className="py-2 hover:text-yellow-600 "
+                    >
+                      Referrals
+                    </Link>
+                    <Link
+                      to="/profile?tab=transactions"
+                      className="py-2 hover:text-yellow-600 "
+                    >
+                      Transaction Logs
+                    </Link>
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"
