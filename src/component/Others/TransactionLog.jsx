@@ -29,7 +29,7 @@ export default function TransactionLog() {
 
   return (
     // <AdminLayout>
-    <div className="max-w-5xl mx-auto p-6 text-white mt-8">
+    <div className="max-w-5xl mx-auto p-6 text-white ">
       <h2 className="text-2xl font-bold text-yellow-400 mb-4">
         Transaction History
       </h2>

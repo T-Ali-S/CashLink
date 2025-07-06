@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-r from-green-900 to-gold200;
+  /* @apply  */
+  background-image:url('/public/backgroundImage/BgImage.png');
+  background-size:cover;
+  background-position:center;
   color:white;
 }

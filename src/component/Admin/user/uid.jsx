@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ref, get, update } from "firebase/database";
+import { ref, get, update, push } from "firebase/database";
 import { db } from "../../../firebase";
 import TransactionAdminView from "../user/TransactionAdminView";
+import { runTransaction } from "firebase/database";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 
 export default function ManageUser() {
@@ -44,6 +45,26 @@ export default function ManageUser() {
     fetchUser();
   }, [uid]);
 
+  const sendToAllUsers = async (subject, message) => {
+    const usersSnap = await get(ref(db, "users"));
+    if (!usersSnap.exists()) return;
+
+    const allUsers = usersSnap.val();
+    const now = Date.now();
+
+    for (const [uid] of Object.entries(allUsers)) {
+      const newNotification = {
+        subject,
+        message,
+        timestamp: now,
+        read: false,
+      };
+      await push(ref(db, `notifications/${uid}`), newNotification);
+    }
+
+    console.log("📣 Notifications sent to all users.");
+  };
+
   const assignPackage = async () => {
     const packageValues = {
       bronze: { amount: 3000, requiredReferrals: 3 },
@@ -59,21 +80,78 @@ export default function ManageUser() {
       return;
     }
 
+    const packageAmount = selected.amount;
+
     const snapshot = await get(ref(db, `users/${uid}`));
     if (!snapshot.exists()) return;
 
     const userData = snapshot.val();
+    if (userData.package === selectedPackage) {
+      return alert("This package is already assigned to the user.");
+    }
     const currentBalance = userData.balance || 0;
     const newBalance =
       selectedPackage === "elite"
         ? currentBalance // no bonus immediately
         : currentBalance + selected.amount * 0.1;
 
-    // 1. Update this user with package + balance
     await update(ref(db, `users/${uid}`), {
       package: selectedPackage,
       balance: newBalance,
     });
+
+    const trackerSnap = await get(ref(db, "liveTracker"));
+    const tracker = trackerSnap.exists() ? trackerSnap.val() : null;
+
+    const totalSnap = await get(ref(db, "liveTracker/total"));
+
+    await runTransaction(ref(db, "liveTracker/total"), (prev) => {
+      return (prev || 0) + packageAmount;
+    });
+
+    if (trackerSnap.exists()) {
+      const totalSnap = await get(ref(db, "liveTracker/total"));
+      const updatedTotal = totalSnap.exists() ? totalSnap.val() : 0;
+
+      const goalEnd = tracker.goalEnd || 200000000;
+      console.log(
+        "🏁 Assigning package:",
+        selectedPackage,
+        "Amount:",
+        packageAmount
+      );
+      console.log(
+        "🧮 Before update: current total =",
+        tracker.total,
+        "→ new total =",
+        updatedTotal
+      );
+
+      if (updatedTotal >= goalEnd) {
+        const newStart = goalEnd;
+        const newEnd = newStart + 50000000;
+
+        await sendToAllUsers(
+          "🎯 Investment Goal Reached!",
+          `Congratulations! The community just crossed Rs. ${goalEnd.toLocaleString()} in total investments! You’ll receive a special bonus soon.`
+        );
+
+        await update(ref(db, "liveTracker"), {
+          total: updatedTotal,
+          goalStart: newStart,
+          goalEnd: newEnd,
+          lastGoalAchievedAt: Date.now(),
+        })
+          .then(() => console.log("✅ Tracker total updated!"))
+          .catch((err) => console.error("🔥 Update failed:", err));
+
+        console.log(`🎯 New goal set: Rs. ${newStart} to Rs. ${newEnd}`);
+      } else {
+        await update(ref(db, "liveTracker"), {
+          total: updatedTotal,
+        });
+      }
+    }
 
     // 2. If referred, check if their referrer qualifies for reward
     if (userData.referredBy && selectedPackage !== "elite") {
@@ -135,7 +213,6 @@ export default function ManageUser() {
 
       <p className="text-white">Email: {userInfo.email}</p>
       <p className="mb-4 text-sm text-gold200">UID: {uid}</p>
-      
 
       <div className="mt-4">
         <h4 className="font-semibold text-white">
@@ -162,10 +239,10 @@ export default function ManageUser() {
         </button>
 
         <h4 className="text-lg font-bold mt-6 text-yellow-400">
-        Withdrawal Requests
-      </h4>
+          Withdrawal Requests
+        </h4>
 
-      {userInfo && <TransactionAdminView userId={uid} />}
+        {userInfo && <TransactionAdminView userId={uid} />}
 
         <div className="mt-8 bg-white p-4 rounded shadow">
           <h3 className="text-lg font-semibold mb-2">Referral Info</h3>

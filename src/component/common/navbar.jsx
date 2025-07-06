@@ -184,9 +184,15 @@ export default function Navbar() {
                       Transaction Logs
                     </Link>
                     {userData?.role === "admin" && (
+                      <>
                       <Link to="/admin" className="py-2 hover:text-yellow-600">
                         Admin Panel
                       </Link>
+                      <Link to="/distribute-bonus" className="py-2 hover:text-yellow-600">
+                        Distribute Bonuses
+                      </Link>
+                      </>
+
                     )}
                   </div>
 

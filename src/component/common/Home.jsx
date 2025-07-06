@@ -9,6 +9,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
+  const [liveTotal, setLiveTotal] = useState(150000000);
   const navigate = useNavigate();
   const location = useLocation();
   const packageRef = useRef(null);
@@ -107,6 +108,23 @@ export default function Home() {
     }
   }, [location]);
 
+  useEffect(() => {
+    const fetchLiveTotal = async () => {
+      const snap = await get(ref(db, "liveTracker/total"));
+      if (snap.exists()) {
+        setLiveTotal(snap.val());
+      }
+    };
+    fetchLiveTotal();
+  }, []);
+
+  const milestoneUnlocked =
+    userData?.milestones?.[userData.package]?.rewarded ||
+    userData?.withdrawUnlocked;
+
+  const baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
+  const bonusOnly = userData?.bonusWithdrawable || 0;
+  const totalWithdrawable = baseWithdrawable + bonusOnly;
   return (
     <div className="max-w-6xl mx-auto p-4">
       <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center text-center md:text-left">
@@ -125,45 +143,51 @@ export default function Home() {
 
         {/* Right Side: Text Content */}
         <div className="w-full md:w-1/2 p-6 md:p-12">
-          {userData?.package ? (
-            <div className="bg-gray-400 text-black p-4 rounded-xl shadow text-center mb-6">
-              <h3 className="text-2xl font-medium text-gray-600">
+          {userData?.balance > 0 ||
+          userData?.withdrawable > 0 ||
+          userData?.package ? (
+            <div className="bg-gray-200 text-black p-4 rounded-xl shadow text-center mb-6">
+              <h3 className="text-2xl font-medium text-gold200">
                 Your Balance
               </h3>
               <p className="text-3xl font-bold mt-2">
                 Rs. {userData.balance || 0}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Currently Active Package: <br></br>
-                <span className="text-xl font-bold text-green-800">
-                  {userData.package.toUpperCase()}
-                </span>
-              </p>
-              {/* Withdrawable Info */}
+              {!userData.package && (
+                <p className="text-xs mt-1 text-red-500 italic">
+                  No package currently active
+                </p>
+              )}
+              {userData.package && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Currently Active Package: <br />
+                  <span className="text-xl font-bold text-green-800">
+                    {userData.package.toUpperCase()}
+                  </span>
+                </p>
+              )}
+
               <p className="text-sm text-gray-500 mt-2">
                 Withdrawable:{" "}
                 <span className="text-green-700 font-bold">
-                  Rs.{" "}
-                  {(() => {
-                    const fullUnlocked =
-                      userData?.milestones?.[userData.package]?.rewarded ||
-                      userData.withdrawUnlocked;
-                    return fullUnlocked ? userData.balance || 0 : 300;
-                  })()}
+                  Rs. {totalWithdrawable}
                 </span>
+                <p className="text-xs text-gray-400 mt-1">
+                  (Includes Rs. {userData?.bonusWithdrawable || 0} bonus
+                  rewards)
+                </p>
               </p>
 
-              {/* Withdraw Button */}
               <button
                 onClick={() => navigate("/withdraw")}
-                className="mt-3 bg-blue-700 hover:bg-blue-600 text-white px-4 py-1 rounded"
+                className="mt-3 bg-gold200 hover:bg-gold100 text-white px-4 py-1 rounded"
               >
                 Withdraw
               </button>
             </div>
           ) : (
             <div>
-              <h1 className="text-green-700 text-3xl md:text-5xl font-bold mb-4">
+              <h1 className="text-gold100 text-3xl md:text-5xl font-bold mb-4">
                 Grow Your Wealth with Us
               </h1>
               <p className="mb-6 text-lg text-white">
@@ -171,7 +195,7 @@ export default function Home() {
               </p>
               <Link
                 onClick={() => navigate("/Signup")}
-                className="bg-green-800 text-white font-bold px-6 py-2 rounded hover:bg-green-700"
+                className="bg-gold200 text-white font-bold px-6 py-2 rounded hover:bg-gold100"
               >
                 Get Started
               </Link>
@@ -208,12 +232,14 @@ export default function Home() {
           <div className="bg-gray-700 h-4 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 h-full transition-all duration-700"
-              style={{ width: "75%" }}
+              style={{
+                width: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
+              }}
             ></div>
           </div>
 
-          <p className="text-gray-300 mt-4">
-            Rs. 15 Crore to Rs. 20 Crore goal in progress...
+          <p className="text-gray-300 mt-4 text-sm sm:text-base">
+            Rs. {liveTotal.toLocaleString()} raised — goal: Rs. 20 Crore
           </p>
         </div>
       </section>

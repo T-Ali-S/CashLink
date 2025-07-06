@@ -134,7 +134,7 @@ export default function Profile() {
   }, []);
 
   return (
-    <div className="min-h-screen text-white px-4 sm:px-6 md:px-10 py-6">
+    <div className="min-h-screen text-white px-4 sm:px-6 md:px-10 py-60">
       {alert.visible && (
         <Alert
           type={alert.type}

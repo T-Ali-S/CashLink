@@ -70,7 +70,7 @@ export default function PackagesCards() {
   }
   return (
     <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center">
-      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-36 text-center text-green-800">
+      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-36 text-center text-gold100">
         Our Investment Packages
       </h2>
 

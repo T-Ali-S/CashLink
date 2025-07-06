@@ -24,15 +24,23 @@ export default function Withdraw() {
       const snap = await get(ref(db, `users/${user.uid}`));
       if (snap.exists()) {
         const data = snap.val();
-        const fullUnlocked =
-          data?.milestones?.[data.package]?.rewarded || data.withdrawUnlocked;
-        const available = fullUnlocked ? data.balance : 300;
-        setWithdrawable(available);
+
+        const baseAmount =
+          data?.milestones?.[data.package]?.rewarded || data.withdrawUnlocked
+            ? data.balance || 0
+            : 300;
+
+        const bonusAmount = data.bonusWithdrawable || 0;
+        const total = baseAmount + bonusAmount;
+
+        setWithdrawable(total);
+
         setForm((prev) => ({
           ...prev,
           email: data.email || "",
           username: data.name || "",
         }));
+
         setLoading(false);
       }
     };
@@ -47,17 +55,24 @@ export default function Withdraw() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
-    if (!user || !form.amount || !form.accountNumber) return;
+    const requestAmount = parseInt(form.amount);
+
+    if (!user || !requestAmount || !form.accountNumber) return;
+
+    if (requestAmount > withdrawable) {
+      alert("❌ You cannot withdraw more than your allowed limit.");
+      return;
+    }
 
     const newTxn = {
       ...form,
-      amount: parseInt(form.amount),
+      amount: requestAmount,
       status: "Pending",
       createdAt: Date.now(),
     };
 
     await push(ref(db, `withdrawals/${user.uid}`), newTxn);
-    alert("Withdrawal request submitted successfully!");
+    alert("✅ Withdrawal request submitted successfully!");
 
     navigate("/transactions");
   };
@@ -121,7 +136,9 @@ export default function Withdraw() {
           </div>
           <div>
             <label className="block text-sm mb-1">
-              {form.method === "bank" ? "Bank Account Number" : "Wallet Number"}
+              {form.method === "bank"
+                ? "Bank Account Number"
+                : "Wallet Number"}
             </label>
             <input
               type="text"

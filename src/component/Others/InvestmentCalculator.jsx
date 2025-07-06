@@ -33,7 +33,7 @@ export default function InvestmentCalculator() {
 
   return (
     <section className="min-h-screen w-full flex flex-col justify-center items-center  px-4 py-12">
-      <h2 className="text-3xl sm:text-4xl font-bold text-green-800 text-center mb-6">
+      <h2 className="text-3xl sm:text-4xl font-bold text-gold100 text-center mb-6">
         Investment Calculator
       </h2>
 
@@ -56,7 +56,7 @@ export default function InvestmentCalculator() {
       </div>
 
       {/* 💰 Calculator Panel */}
-      <div className="bg-yellow-400 shadow-lg rounded-xl w-full max-w-md p-6">
+      <div className="bg-gold200 shadow-lg rounded-xl w-full max-w-md p-6">
         <div className="space-y-6">
           <select
             value={packageType}

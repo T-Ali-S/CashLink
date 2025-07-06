@@ -20,76 +20,7 @@ export default function Signin() {
   const [loading, setLoading] = useState(false);
   const db = getDatabase();
 
-  // const handleLogin = async (e) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-
-  //   if (!email || !password) {
-  //     setAlert({
-  //       visible: true,
-  //       message: "Please fill out all fields.",
-  //       type: "error",
-  //     });
-  //     setLoading(false);
-  //     return;
-  //   }
-  //   try {
-  //     const userCredential = await signInWithEmailAndPassword(
-  //       auth,
-  //       email,
-  //       password
-  //     );
-  //     const user = userCredential.user;
-
-  //     const snapshot = await get(ref(db, `users/${user.uid}`));
-  //     const data = snapshot.val();
-
-  //     if (!data) {
-  //       setAlert({
-  //         visible: true,
-  //         message: "User profile not found.",
-  //         type: "error",
-  //       });
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     if (data?.role === "admin") {
-  //       setAlert({
-  //         visible: true,
-  //         message: "Login successful!",
-  //         type: "success",
-  //       });
-
-  //       setTimeout(() => navigate("/admin"), 2000);
-  //     } else {
-  //       setAlert({
-  //         visible: true,
-  //         message: "Login successful!",
-  //         type: "success",
-  //       });
-
-  //       setTimeout(() => navigate("/"), 2000);
-  //     }
-  //   } catch (error) {
-  //     // console.error(err);
-
-  //     const errorMessage =
-  //       error.code === "auth/user-not-found"
-  //         ? "No user found with this email."
-  //         : error.code === "auth/wrong-password"
-  //         ? "Incorrect password."
-  //         : "Login failed. Please try again.";
-
-  //     setAlert({
-  //       visible: true,
-  //       message: errorMessage,
-  //       type: "error",
-  //     });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  
 
   const handleLogin = async (e) => {
     e.preventDefault();
