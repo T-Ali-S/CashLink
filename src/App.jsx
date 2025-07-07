@@ -16,11 +16,10 @@ import TransactionAdminView from "./component/Admin/user/TransactionAdminView";
 import DistributeBonus from "./component/Admin/DistributeBonus";
 import InitLiveTracker from "./component/common/InitLiveTracker";
 import { auth } from "./firebase";
+import Contact from "./component/common/Contact";
+
 
 function App() {
-  if (!import.meta.env.PROD && auth.currentUser?.role === "admin") {
-    return <InitLiveTracker />;
-  }
   const router = createBrowserRouter([
     {
       path: "/",
@@ -77,6 +76,15 @@ function App() {
         </>
       ),
     },
+    {
+  path: "/contact",
+  element: (
+    <>
+      <Navbar />
+      <Contact />
+    </>
+  ),
+},
     {
       path: "/start-with-nothing",
       element: (

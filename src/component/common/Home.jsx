@@ -33,7 +33,7 @@ export default function Home() {
               bronze: 6300,
               silver: 10500,
               gold: 21000,
-              diamond: 50000,
+              platinum: 105000, // ✅ correct value
             };
 
             const reward = packageRewards[data.package] || 0;
@@ -74,18 +74,23 @@ export default function Home() {
             const now = Date.now();
             const last = data.lastPayoutAt || 0;
             const oneDay = 24 * 60 * 60 * 1000;
+            const eliteCap = 200000;
+            const roi = 5000;
 
-            if (now - last >= oneDay) {
-              const updatedBalance = (data.balance || 0) + 5000;
+            if (now - last >= oneDay && (data.balance || 0) < eliteCap) {
+              const nextBalance = Math.min((data.balance || 0) + roi, eliteCap);
 
               await update(ref(db, `users/${user.uid}`), {
-                balance: updatedBalance,
+                balance: nextBalance,
+                withdrawable: nextBalance, // 🔓 elite is always unlocked
                 lastPayoutAt: now,
               });
 
-              console.log("💸 Daily elite ROI added: Rs. 5000");
-              data.balance = updatedBalance; // reflect in local data
+              data.balance = nextBalance;
+              data.withdrawable = nextBalance;
               data.lastPayoutAt = now;
+
+              console.log("💸 Elite ROI added:", roi);
             }
           }
           setUserData({
@@ -118,11 +123,18 @@ export default function Home() {
     fetchLiveTotal();
   }, []);
 
-  const milestoneUnlocked =
-    userData?.milestones?.[userData.package]?.rewarded ||
-    userData?.withdrawUnlocked;
+  let milestoneUnlocked = false;
+  let baseWithdrawable = 0;
 
-  const baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
+  if (userData) {
+    milestoneUnlocked =
+      userData.package === "elite" ||
+      userData?.milestones?.[userData.package]?.rewarded ||
+      userData?.withdrawUnlocked;
+
+    baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
+  }
+
   const bonusOnly = userData?.bonusWithdrawable || 0;
   const totalWithdrawable = baseWithdrawable + bonusOnly;
   return (
@@ -193,12 +205,20 @@ export default function Home() {
               <p className="mb-6 text-lg text-white">
                 Invest in secure packages, earn daily, withdraw anytime.
               </p>
-              <Link
-                onClick={() => navigate("/Signup")}
+              <button
+                onClick={() => {
+                  const user = auth.currentUser;
+                  if (!user) {
+                    navigate("/Signin");
+                  } else {
+                    // Scroll to package section
+                    packageRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
                 className="bg-gold200 text-white font-bold px-6 py-2 rounded hover:bg-gold100"
               >
                 Get Started
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -229,13 +249,29 @@ export default function Home() {
             Live Investment Tracker
           </h2>
 
-          <div className="bg-gray-700 h-4 rounded-full overflow-hidden">
+          <div className="relative bg-gray-700 h-4 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 h-full transition-all duration-700"
               style={{
                 width: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
               }}
             ></div>
+            {/* moving Gif */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2"
+              style={{
+                left: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              {/* <video
+                src="/assets/finalcat.webm" // Place your mp4 in public/assets and use correct path
+                autoPlay
+                loop
+                muted
+                className="h-8 sm:h-10 aspect-square object-contain"
+              /> */}
+            </div>
           </div>
 
           <p className="text-gray-300 mt-4 text-sm sm:text-base">

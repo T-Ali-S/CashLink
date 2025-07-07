@@ -4,7 +4,7 @@
 
 body {
   /* @apply  */
-  background-image:url('/public/backgroundImage/BgImage.png');
+  background-image:url('/backgroundImage/BgImage.png');
   background-size:cover;
   background-position:center;
   color:white;

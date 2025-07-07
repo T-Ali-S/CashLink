@@ -90,14 +90,37 @@ export default function ManageUser() {
       return alert("This package is already assigned to the user.");
     }
     const currentBalance = userData.balance || 0;
-    const newBalance =
-      selectedPackage === "elite"
-        ? currentBalance // no bonus immediately
-        : currentBalance + selected.amount * 0.1;
+    // const newBalance =
+    //   selectedPackage === "elite"
+    //     ? currentBalance // no bonus immediately
+    //     : currentBalance + selected.amount * 0.1;
+
+    // await update(ref(db, `users/${uid}`), {
+    //   package: selectedPackage,
+    //   balance: newBalance,
+    // });
+
+    const userAlreadyHasPackage = userData.package === selectedPackage;
+    // if (userAlreadyHasPackage) {
+    //   return alert("This package is already assigned to the user.");
+    // }
+
+    const isElite = selectedPackage === "elite";
+    const rewardPercent = isElite ? 0.05 : 0.1;
+    const firstReward = selected.amount * rewardPercent;
+
+    // 💰 User gets this as initial balance + withdrawable
+    const newBalance = (userData.balance || 0) + firstReward;
+
+    // 📤 For elite: all earnings are withdrawable immediately
+    // 🛑 For other users: only the first reward is withdrawable, rest unlocks via referrals
+    const newWithdrawable = isElite ? newBalance : firstReward;
 
     await update(ref(db, `users/${uid}`), {
       package: selectedPackage,
       balance: newBalance,
+      withdrawable: newWithdrawable,
+      [`milestones/${selectedPackage}/rewarded`]: false, // 🔒 default state
     });
 
     const trackerSnap = await get(ref(db, "liveTracker"));
@@ -194,9 +217,7 @@ export default function ManageUser() {
     }));
 
     alert(
-      `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${
-        selected.amount * 0.1
-      }`
+      `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`
     );
   };
 
@@ -229,6 +250,7 @@ export default function ManageUser() {
           <option value="silver">Silver</option>
           <option value="gold">Gold</option>
           <option value="platinum">Platinum</option>
+          <option value="elite">Elite</option>
         </select>
 
         <button

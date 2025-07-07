@@ -93,25 +93,11 @@ export default function Navbar() {
           <Link className="hover:text-gray-300" to="">
             About
           </Link>
-          <Link
-            onClick={(e) => {
-              e.preventDefault();
-              if (window.location.pathname === "/") {
-                // Already on home → just scroll
-                const el = document.querySelector("[data-scroll='packages']");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              } else {
-                // Navigate to home and scroll after load
-                navigate("/#packages");
-              }
-            }}
-            className="hover:text-gray-300"
-            to="/#packages"
-          >
+          <Link to="/#packages" className="hover:text-gold200 transition">
             Plan
           </Link>
 
-          <Link className="hover:text-gray-300" to="">
+          <Link to="/contact" className="hover:text-gold200">
             Contact
           </Link>
         </div>
@@ -185,14 +171,19 @@ export default function Navbar() {
                     </Link>
                     {userData?.role === "admin" && (
                       <>
-                      <Link to="/admin" className="py-2 hover:text-yellow-600">
-                        Admin Panel
-                      </Link>
-                      <Link to="/distribute-bonus" className="py-2 hover:text-yellow-600">
-                        Distribute Bonuses
-                      </Link>
+                        <Link
+                          to="/admin"
+                          className="py-2 hover:text-yellow-600"
+                        >
+                          Admin Panel
+                        </Link>
+                        <Link
+                          to="/distribute-bonus"
+                          className="py-2 hover:text-yellow-600"
+                        >
+                          Distribute Bonuses
+                        </Link>
                       </>
-
                     )}
                   </div>
 
@@ -247,17 +238,17 @@ export default function Navbar() {
                   Notifications
                 </Link>
                 <Link
-                      to="/profile?tab=referrals"
-                      className="py-2 hover:text-yellow-600 "
-                    >
-                      Referrals
-                    </Link>
-                    <Link
-                      to="/profile?tab=transactions"
-                      className="py-2 hover:text-yellow-600 "
-                    >
-                      Transaction Logs
-                    </Link>
+                  to="/profile?tab=referrals"
+                  className="py-2 hover:text-yellow-600 "
+                >
+                  Referrals
+                </Link>
+                <Link
+                  to="/profile?tab=transactions"
+                  className="py-2 hover:text-yellow-600 "
+                >
+                  Transaction Logs
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"

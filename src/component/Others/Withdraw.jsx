@@ -25,10 +25,13 @@ export default function Withdraw() {
       if (snap.exists()) {
         const data = snap.val();
 
-        const baseAmount =
-          data?.milestones?.[data.package]?.rewarded || data.withdrawUnlocked
-            ? data.balance || 0
-            : 300;
+        const isElite = data.package === "elite";
+
+        const milestoneUnlocked = isElite
+          ? true
+          : data?.milestones?.[data.package]?.rewarded || data.withdrawUnlocked;
+
+        const baseAmount = milestoneUnlocked ? data.balance || 0 : 300;
 
         const bonusAmount = data.bonusWithdrawable || 0;
         const total = baseAmount + bonusAmount;
@@ -136,9 +139,7 @@ export default function Withdraw() {
           </div>
           <div>
             <label className="block text-sm mb-1">
-              {form.method === "bank"
-                ? "Bank Account Number"
-                : "Wallet Number"}
+              {form.method === "bank" ? "Bank Account Number" : "Wallet Number"}
             </label>
             <input
               type="text"
