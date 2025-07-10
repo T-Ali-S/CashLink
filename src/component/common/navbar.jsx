@@ -4,15 +4,17 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
 import { ref, get } from "firebase/database";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useContext } from "react";
+import { UserContext } from "../Others/UserContext";
 
-export default function Navbar() {
+export default function Navbar({ userData }) {
   const [isOpen, setIsOpen] = useState(false);
-  // const [username, setUsername] = useState("");
-  const [userData, setUserData] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const dropdownRef = useRef();
+  const menuToggleRef = useRef();
+  const mobileMenuRef = useRef();
+  const avatarToggleRef = useRef();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -20,52 +22,77 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const snapshot = await get(ref(db, `users/${user.uid}`));
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          setUserData({
-            ...data,
-            uid: user.uid,
-            role: data.role || "user",
-          });
-        }
-      } else {
-        setUserData(null);
+    const handleClickOutside = (e) => {
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target) &&
+        menuToggleRef.current &&
+        !menuToggleRef.current.contains(e.target)
+      ) {
+        setIsOpen(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleAvatarClickOutside = (e) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        avatarToggleRef.current &&
+        !avatarToggleRef.current.contains(e.target)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleAvatarClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleAvatarClickOutside);
+    };
+  }, [dropdownOpen]);
 
   return (
     <nav className="fixed w-full bg-gray-800 top-0 left-0 text-white p-4 z-50">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <Link className="text-lg font-bold" to="/">
-            Pyramid Scheme
+        <div className="flex-1 flex items-center gap-2">
+          <Link to="/">
+            <img
+              src="/assets/coinlink.png"
+              alt="Logo"
+              className="w-8 h-8 object-contain"
+            />
+          </Link>
+          <Link className="text-lg text-gold200 font-bold" to="/">
+            CoinLink
           </Link>
         </div>
 
         {/* Right side: Avatar or Hamburger */}
         <div className="md:hidden flex items-center">
-          {userData ? (
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="focus:outline-none"
-            >
+          <button
+            ref={menuToggleRef}
+            onClick={() => setIsOpen(!isOpen)}
+            className="focus:outline-none"
+          >
+            {userData ? (
               <img
                 src={userData.avatarUrl || "/avatars/default.png"}
                 alt="avatar"
                 className="w-8 h-8 rounded-full object-cover border-2 border-white"
               />
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="focus:outline-none"
-            >
+            ) : (
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -81,8 +108,8 @@ export default function Navbar() {
                   }
                 />
               </svg>
-            </button>
-          )}
+            )}
+          </button>
         </div>
 
         {/* Desktop nav links */}
@@ -90,9 +117,9 @@ export default function Navbar() {
           <Link className="hover:text-gray-300" to="/">
             Home
           </Link>
-          <Link className="hover:text-gray-300" to="">
+          {/* <Link className="hover:text-gray-300" to="">
             About
-          </Link>
+          </Link> */}
           <Link to="/#packages" className="hover:text-gold200 transition">
             Plan
           </Link>
@@ -106,6 +133,7 @@ export default function Navbar() {
           {userData ? (
             <div className="relative" ref={dropdownRef}>
               <button
+                ref={avatarToggleRef}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 hover:text-gray-300 focus:outline-none"
               >
@@ -206,17 +234,20 @@ export default function Navbar() {
 
       {/* Mobile dropdown links */}
       {isOpen && (
-        <div className="mt-4 flex flex-col gap-2 md:hidden bg-gray-700 p-4 rounded-lg">
+        <div
+          ref={mobileMenuRef}
+          className="mt-4 flex flex-col gap-2 md:hidden bg-gray-700 p-4 rounded-lg"
+        >
           <Link to="/" className="hover:text-gray-300">
             Home
           </Link>
-          <Link to="#" className="hover:text-gray-300">
+          {/* <Link to="#" className="hover:text-gray-300">
             About
-          </Link>
-          <Link to="#" className="hover:text-gray-300">
+          </Link> */}
+          <Link to="/#packages" className="hover:text-gray-300">
             Plan
           </Link>
-          <Link to="#" className="hover:text-gray-300">
+          <Link to="/contact" className="hover:text-gray-300">
             Contact
           </Link>
 
@@ -239,7 +270,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   to="/profile?tab=referrals"
-                  className="py-2 hover:text-yellow-600 "
+                  className="block py-1 hover:text-yellow-600 "
                 >
                   Referrals
                 </Link>

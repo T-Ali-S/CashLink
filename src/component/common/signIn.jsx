@@ -1,26 +1,26 @@
 import axios from "axios";
-import React from "react";
+import React, {useContext} from "react";
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../firebase";
-import Alert from "./Alert";
+// import Alert from "./Alert";
 import { Link, useNavigate } from "react-router-dom";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { getDatabase, ref, get } from "firebase/database";
+import { AlertContext } from "../context/AlertContext";
 
 export default function Signin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const [alert, setAlert] = useState({
-    visible: false,
-    message: "",
-    type: "success",
-  });
+  // const [alert, setAlert] = useState({
+  //   visible: false,
+  //   message: "",
+  //   type: "success",
+  // });
+  const { setAlert } = useContext(AlertContext);
   const [loading, setLoading] = useState(false);
   const db = getDatabase();
-
-  
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -56,16 +56,17 @@ export default function Signin() {
         setLoading(false);
         return;
       }
+      console.log("User logged in with role:", data.role);
 
       setAlert({
         visible: true,
         message: "Login successful!",
         type: "success",
       });
+      console.log("🚀 Navigating to:", data.role === "admin" ? "/admin" : "/");
+navigate(data.role === "admin" ? "/admin" : "/");
 
-      setTimeout(() => {
-        navigate(data.role === "admin" ? "/admin" : "/");
-      }, 2000);
+
     } catch (error) {
       const errorMessage =
         error.code === "auth/user-not-found"

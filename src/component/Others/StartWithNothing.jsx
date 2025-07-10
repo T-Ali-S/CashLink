@@ -4,6 +4,7 @@ import { ref, get, update } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../Admin/AdminLayout";
 import { sendNotification } from "../utils/sendNotification";
+import { RewardManager } from "../utils/RewardManager";
 
 export default function StartWithNothing() {
   const [userData, setUserData] = useState(null);
@@ -14,7 +15,7 @@ export default function StartWithNothing() {
     bronze: { target: 10, reward: 6300 },
     silver: { target: 7, reward: 10500 },
     gold: { target: 4, reward: 21000 },
-    diamond: { target: 2, reward: 50000 },
+    platinum: { target: 2, reward: 50000 },
     elite: { target: 1, reward: 100000 },
   };
 
@@ -32,7 +33,9 @@ export default function StartWithNothing() {
       const allUsersSnap = await get(ref(db, "users"));
       const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
 
-      const excluded = Object.values(usedReferrals).flat();
+      const usedStartRefs = Object.values(usedReferrals).flat();
+      const usedPackageRefs = userInfo.usedPackageRefs || [];
+      const excluded = [...new Set([...usedStartRefs, ...usedPackageRefs])];
 
       const referrals = Object.entries(allUsers)
         .filter(([uid, u]) => {
@@ -74,18 +77,15 @@ export default function StartWithNothing() {
       .slice(0, goal)
       .map(([uid]) => uid);
 
-    const updatedBalance = (userData.balance || 0) + packageGoals[pkg].reward;
+    await RewardManager.addMilestoneReward(
+      userData.uid,
+      pkg,
+      packageGoals[pkg].reward
+    );
 
     await update(ref(db, `users/${userData.uid}`), {
-      balance: updatedBalance,
       [`usedReferrals/${pkg}`]: [...existingUsed, ...newRefs],
     });
-
-    await sendNotification(
-      userData.uid,
-      "🎁 Reward Claimed!",
-      `You earned Rs. ${packageGoals[pkg].reward} from your ${pkg} referral milestone!`
-    );
 
     alert(
       `🎉 You've earned Rs. ${packageGoals[pkg].reward} for ${pkg} referrals!`

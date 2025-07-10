@@ -74,6 +74,7 @@ export default function Signup() {
         package: null,
         avatarUrl: "/avatars/default.png",
         // role:"admin",
+        role:"user",
         createdAt: new Date().toISOString(),
         name_lower: name.toLowerCase(), // for lookups
         name_slug: name.toLowerCase().replace(/\s+/g, "-"), // for URLs or slugs

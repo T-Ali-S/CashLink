@@ -6,6 +6,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
 import { get, ref, update } from "firebase/database";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { RewardManager } from "../utils/RewardManager";
+import { MdLoop } from "react-icons/md";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
@@ -13,7 +15,6 @@ export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const packageRef = useRef(null);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -36,10 +37,27 @@ export default function Home() {
               platinum: 105000, // ✅ correct value
             };
 
-            const reward = packageRewards[data.package] || 0;
+            const rawPackage = (data.package || "").trim().toLowerCase();
+
+            if (!rawPackage || !packageRewards[rawPackage]) {
+              console.log("ℹ️ User has no valid package. ROI logic skipped.");
+              return;
+            }
+
+            const reward = packageRewards[rawPackage] || 0;
             // 🚨 Defensive check for unexpected package values
             if (data.package !== "elite" && !packageRewards[data.package]) {
               console.warn("⚠️ Unrecognized package:", data.package);
+              Ho;
+
+              const normalizedPackage = data.package.trim().toLowerCase();
+              const reward = packageRewards[normalizedPackage];
+
+              if (!reward) {
+                console.warn("⚠️ Unrecognized package:", normalizedPackage);
+                // Optional fallback UI — no alert pop-up
+                return;
+              }
             }
 
             const now = Date.now();
@@ -62,10 +80,7 @@ export default function Home() {
               } else {
                 // Incomplete → grow at 10% daily
                 const growth = (reward - baseBonus) * 0.1;
-                await update(ref(db, `users/${user.uid}`), {
-                  balance: (data.balance || 0) + growth,
-                  lastPayoutAt: now,
-                });
+                await RewardManager.addDailyROI(user.uid, growth);
                 console.log("⏳ ROI added at 10% growth:", growth);
               }
             }
@@ -123,20 +138,29 @@ export default function Home() {
     fetchLiveTotal();
   }, []);
 
-  let milestoneUnlocked = false;
-  let baseWithdrawable = 0;
+  //For CheckOut Error stuck at 300//////////////////
+  // let milestoneUnlocked = false;
+  // let baseWithdrawable = 0;
 
-  if (userData) {
-    milestoneUnlocked =
-      userData.package === "elite" ||
-      userData?.milestones?.[userData.package]?.rewarded ||
-      userData?.withdrawUnlocked;
+  // if (userData) {
+  //   milestoneUnlocked =
+  //     userData.package === "elite" ||
+  //     userData?.milestones?.[userData.package]?.rewarded ||
+  //     userData?.withdrawUnlocked;
 
-    baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
-  }
+  //   baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
+  // }
 
-  const bonusOnly = userData?.bonusWithdrawable || 0;
-  const totalWithdrawable = baseWithdrawable + bonusOnly;
+  // const bonusOnly = userData?.bonusWithdrawable || 0;
+  // const totalWithdrawable = baseWithdrawable + bonusOnly;
+
+  const totalWithdrawable = userData?.withdrawable || 0;
+
+  const milestoneUnlocked =
+  userData?.package === "elite" ||
+  userData?.milestones?.[userData.package]?.rewarded ||
+  userData?.withdrawUnlocked;
+
   return (
     <div className="max-w-6xl mx-auto p-4">
       <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center text-center md:text-left">
@@ -164,7 +188,23 @@ export default function Home() {
               </h3>
               <p className="text-3xl font-bold mt-2">
                 Rs. {userData.balance || 0}
+                <button
+                  onClick={async () => {
+                    const user = auth.currentUser;
+                    if (user) {
+                      const snap = await get(ref(db, `users/${user.uid}`));
+                      if (snap.exists()) {
+                        const fresh = snap.val();
+                        setUserData({ ...fresh, uid: user.uid });
+                      }
+                    }
+                  }}
+                  className="ms-2 text-xl text-gray-700 underline hover:text-gold200"
+                >
+                  <MdLoop />
+                </button>
               </p>
+
               {!userData.package && (
                 <p className="text-xs mt-1 text-red-500 italic">
                   No package currently active
@@ -179,16 +219,16 @@ export default function Home() {
                 </p>
               )}
 
-              <p className="text-sm text-gray-500 mt-2">
-                Withdrawable:{" "}
+              <div className="text-sm text-gray-500 mt-2">
+                <span>Withdrawable: </span>
                 <span className="text-green-700 font-bold">
-                  Rs. {totalWithdrawable}
+                  Rs. {userData?.withdrawable || 0}
                 </span>
-                <p className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-gray-400 mt-1">
                   (Includes Rs. {userData?.bonusWithdrawable || 0} bonus
                   rewards)
-                </p>
-              </p>
+                </div>
+              </div>
 
               <button
                 onClick={() => navigate("/withdraw")}
@@ -239,6 +279,13 @@ export default function Home() {
             <span className="text-2xl font-bold text-white ">
               {" "}
               Get Bouses at every MileStone!
+              {milestoneUnlocked && (
+                <div className="mt-2">
+                  <span className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full animate-pulse">
+                    🎉 Package Milestone Unlocked!
+                  </span>
+                </div>
+              )}
             </span>
           </div>
         </div>

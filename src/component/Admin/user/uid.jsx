@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { ref, get, update, push } from "firebase/database";
 import { db } from "../../../firebase";
 import TransactionAdminView from "../user/TransactionAdminView";
 import { runTransaction } from "firebase/database";
+import { AlertContext } from "../../context/AlertContext";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 
 export default function ManageUser() {
@@ -13,6 +14,7 @@ export default function ManageUser() {
   const [selectedPackage, setSelectedPackage] = useState("");
   const [referrals, setReferrals] = useState([]);
   const [referredByUser, setReferredByUser] = useState(null);
+  const { setAlert } = useContext(AlertContext);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -70,13 +72,17 @@ export default function ManageUser() {
       bronze: { amount: 3000, requiredReferrals: 3 },
       silver: { amount: 6000, requiredReferrals: 3 },
       gold: { amount: 10000, requiredReferrals: 2 },
-      platinum: { amount: 25000, requiredReferrals: 1 },
+      platinum: { amount: 50000, requiredReferrals: 1 },
       elite: { amount: 100000, requiredReferrals: 0, dailyROI: 0.05 },
     };
 
     const selected = packageValues[selectedPackage];
     if (!selected) {
-      alert("Please select a valid package.");
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "Please select a valid package.",
+      });
       return;
     }
 
@@ -86,24 +92,53 @@ export default function ManageUser() {
     if (!snapshot.exists()) return;
 
     const userData = snapshot.val();
+    const allUsersSnap = await get(ref(db, "users"));
+    const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+
+    const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+
+    const currentTierIndex = tierOrder.indexOf(userData.package);
+    const selectedTierIndex = tierOrder.indexOf(selectedPackage);
+
+    // ✅ Block any assignment if the current package is not completed
+    if (
+      userData.package && // A package is already active
+      userData.package !== selectedPackage // Prevent reassignment of same package
+    ) {
+      const milestoneComplete =
+        userData?.milestones?.[userData.package]?.rewarded || false;
+
+      if (!milestoneComplete) {
+        return setAlert({
+          visible: true,
+          type: "error",
+          message: `❌ User already has "${userData.package}" active and it's not completed.\nComplete the current milestone before assigning "${selectedPackage}".`,
+        });
+      }
+    }
+
+    const referrals = Object.entries(allUsers)
+      .filter(([refId, u]) => u.referredBy === uid && u.package)
+      .map(([refId, u]) => ({ uid: refId, ...u }));
+
+    const previouslyConsumed = userData.usedPackageRefs || [];
+
+    const availableRefs = referrals.filter(
+      (ref) => !previouslyConsumed.includes(ref.uid)
+    );
+
+    const refsToConsume = availableRefs
+      .slice(0, selected.requiredReferrals)
+      .map((u) => u.uid);
     if (userData.package === selectedPackage) {
-      return alert("This package is already assigned to the user.");
+      return setAlert({
+        visible: true,
+        type: "error",
+        message: `⚠️ "${selectedPackage}" is already assigned to this user.`,
+      });
     }
     const currentBalance = userData.balance || 0;
-    // const newBalance =
-    //   selectedPackage === "elite"
-    //     ? currentBalance // no bonus immediately
-    //     : currentBalance + selected.amount * 0.1;
-
-    // await update(ref(db, `users/${uid}`), {
-    //   package: selectedPackage,
-    //   balance: newBalance,
-    // });
-
-    const userAlreadyHasPackage = userData.package === selectedPackage;
-    // if (userAlreadyHasPackage) {
-    //   return alert("This package is already assigned to the user.");
-    // }
+    // const userAlreadyHasPackage = userData.package === selectedPackage;
 
     const isElite = selectedPackage === "elite";
     const rewardPercent = isElite ? 0.05 : 0.1;
@@ -118,10 +153,11 @@ export default function ManageUser() {
 
     await update(ref(db, `users/${uid}`), {
       package: selectedPackage,
-      balance: newBalance,
-      withdrawable: newWithdrawable,
-      [`milestones/${selectedPackage}/rewarded`]: false, // 🔒 default state
+      [`milestones/${selectedPackage}/rewarded`]: false,
+      usedPackageRefs: [...previouslyConsumed, ...refsToConsume],
     });
+
+    await RewardManager.addPackageReward(uid, selectedPackage, firstReward);
 
     const trackerSnap = await get(ref(db, "liveTracker"));
     const tracker = trackerSnap.exists() ? trackerSnap.val() : null;
@@ -190,22 +226,14 @@ export default function ManageUser() {
 
         const threshold = selected.requiredReferrals;
 
-        if (qualifyingReferrals.length >= threshold) {
-          const bonus = selected.amount * 0.1;
-          const referrerBalance = referrer.balance || 0;
-
-          await update(ref(db, `users/${userData.referredBy}`), {
-            balance: referrerBalance + bonus,
-          });
-          await sendNotification(
-            userData.referredBy,
-            "💰 Bonus Earned!",
-            `You've earned Rs. ${bonus} because ${userData.name} activated their ${selectedPackage} package.`
-          );
-
+        if (
+          qualifyingReferrals.length >= threshold &&
+          selectedPackage !== "elite"
+        ) {
           console.log(
-            `✅ Referrer ${referrer.name} rewarded with Rs. ${bonus}`
+            `🔒 Referrer qualifies for milestone — handled in StartWithNothing`
           );
+          // No immediate bonus — user will claim milestone manually
         }
       }
     }
@@ -215,83 +243,118 @@ export default function ManageUser() {
       package: selectedPackage,
       balance: newBalance,
     }));
+    setAlert({
+      visible: true,
+      type: "success",
+      message: `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`,
+    });
 
-    alert(
-      `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`
-    );
+    // alert(`✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`);
+    setAlert({
+      visible: true,
+      type: "success",
+      message:
+        `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}.\n` +
+        `${refsToConsume.length} referral${
+          refsToConsume.length === 1 ? "" : "s"
+        } used to unlock milestone progress.`,
+    });
+
+    // alert(
+    //   `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}.\n` +
+    //     `${refsToConsume.length} referral${
+    //       refsToConsume.length === 1 ? "" : "s"
+    //     } used to unlock milestone progress.`
+    // );
   };
 
   if (loading) return <p className="p-6">Loading user info...</p>;
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl text-white font-bold mb-4">
-        Managing:{" "}
-        <span className="text-gold200">
-          {userInfo.name.toUpperCase() || "No username found"}
-        </span>
-      </h2>
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 max-w-3xl mx-auto">
+        <h2 className="text-2xl text-white font-bold mb-4">
+          Managing:{" "}
+          <span className="text-gold200">
+            {userInfo.name.toUpperCase() || "No username found"}
+          </span>
+        </h2>
 
-      <p className="text-white">Email: {userInfo.email}</p>
-      <p className="mb-4 text-sm text-gold200">UID: {uid}</p>
+        <p className="text-white text-sm">Email: {userInfo.email}</p>
+        <p className="mb-4 text-xs text-gold200">UID: {uid}</p>
 
-      <div className="mt-4">
-        <h4 className="font-semibold text-white">
-          Current Package: {userInfo.package || "None"}
-        </h4>
+        <div className="mt-4">
+          <h4 className="font-semibold text-white">
+            Current Package: {""}
+            <span className="text-xl text-gold200 font-bold">
+              {userInfo?.package
+                ? userInfo.package.charAt(0).toUpperCase() +
+                  userInfo.package.slice(1)
+                : "None"}
+            </span>
+          </h4>
 
-        <select
-          className="mt-2 p-2 border rounded text-black"
-          value={selectedPackage}
-          onChange={(e) => setSelectedPackage(e.target.value)}
-        >
-          <option value="">-- Select Package --</option>
-          <option value="bronze">Bronze</option>
-          <option value="silver">Silver</option>
-          <option value="gold">Gold</option>
-          <option value="platinum">Platinum</option>
-          <option value="elite">Elite</option>
-        </select>
 
-        <button
-          className="ml-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
-          onClick={assignPackage}
-        >
-          Assign Package
-        </button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center mt-4">
+            <select
+              className="p-2 border rounded text-black w-full sm:w-auto text-black"
+              value={selectedPackage}
+              onChange={(e) => setSelectedPackage(e.target.value)}
+            >
+              <option value="">-- Select Package --</option>
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+              <option value="elite">Elite</option>
+            </select>
+            <button
+              className="bg-gold200 text-white px-4 py-2 rounded hover:bg-yellow-500 w-full sm:w-auto"
+              onClick={assignPackage}
+            >
+              Assign Package
+            </button>
+          </div>
 
-        <h4 className="text-lg font-bold mt-6 text-yellow-400">
-          Withdrawal Requests
-        </h4>
+          
+          <hr className="mt-10"/>
+          <h4 className="text-2xl text-center font-bold mt-6 mb-6 text-yellow-400">
+            Withdrawal Requests
+          </h4>
+          <div className="border border-1 p-20 border-white border-rounded">
+            {userInfo && <TransactionAdminView userId={uid} />}
+          </div>
+          
 
-        {userInfo && <TransactionAdminView userId={uid} />}
+          <div className="mt-8 bg-white p-4 rounded shadow">
+            <h3 className="text-lg font-semibold mb-2">Referral Info</h3>
 
-        <div className="mt-8 bg-white p-4 rounded shadow">
-          <h3 className="text-lg font-semibold mb-2">Referral Info</h3>
+            {referredByUser ? (
+              <p className="text-sm text-gray-600 mb-2">
+                Referred By:{" "}
+                <span className="font-medium">{referredByUser.name}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 mb-2">
+                This user was not referred by anyone.
+              </p>
+            )}
 
-          {referredByUser ? (
-            <p className="text-sm text-gray-600 mb-2">
-              Referred By:{" "}
-              <span className="font-medium">{referredByUser.name}</span>
-            </p>
-          ) : (
-            <p className="text-sm text-gray-500 mb-2">
-              This user was not referred by anyone.
-            </p>
-          )}
-
-          <h4 className="text-sm font-semibold mb-1">Users Referred:</h4>
-          {referrals.length > 0 ? (
-            <ul className="list-disc list-inside text-sm text-gray-700">
-              {referrals.map(([refUid, u]) => (
-                <li key={refUid}>
-                  {u.name} ({u.email})
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-500">No referrals by this user.</p>
-          )}
+            <h4 className="text-sm font-semibold mb-1">Users Referred:</h4>
+            {referrals.length > 0 ? (
+              <ul className="list-disc list-inside text-sm text-gray-700 max-h-[300px] overflow-auto pr-2">
+                {referrals.map(([refUid, u]) => (
+                  <li key={refUid}>
+                    {u.name} ({u.email})
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No referrals by this user.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </AdminLayout>

@@ -1,74 +1,121 @@
-import React, { useState } from "react";
+import React, {useContext, useState } from "react";
 import { db } from "../../firebase";
 import { ref, get, update, push } from "firebase/database";
 import AdminLayout from "../Admin/AdminLayout";
+import { AlertContext } from "../context/AlertContext";
 
 export default function DistributeBonus() {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState(
     "🎉 You've received a bonus for helping us reach our investment goal!"
   );
+  const { setAlert } = useContext(AlertContext);
   const [status, setStatus] = useState("idle");
 
   const handleDistribute = async () => {
-  try {
-    const bonus = parseInt(amount);
-    if (!bonus || bonus <= 0) return alert("Enter a valid bonus amount");
+    try {
+      const bonus = parseInt(amount);
+      if (!bonus || bonus <= 0) {
+        // alert("Enter a valid bonus amount")
+        setAlert({
+          visible: true,
+          type: "error",
+          message: "Enter a valid bonus amount",
+        });
+        return;
+      }
 
-    setStatus("processing");
+      setStatus("processing");
 
-    const usersSnap = await get(ref(db, "users"));
-    if (!usersSnap.exists()) {
+      const usersSnap = await get(ref(db, "users"));
+      if (!usersSnap.exists()) {
+        setStatus("error");
+        setAlert({
+          visible: true,
+          type: "error",
+          message: "No users found",
+        });
+        // alert("No users found")
+        return;
+      }
+
+      const allUsers = usersSnap.val();
+      const updates = {};
+      const now = Date.now();
+
+      if (
+        !window.confirm(
+          `Are you sure you want to send Rs. ${bonus} bonus to all eligible users?`
+        )
+      ) {
+        return setAlert({
+          visible: true,
+          type: "info",
+          message: "Distribution cancelled.",
+        });
+      }
+
+      for (const [uid, user] of Object.entries(allUsers)) {
+        const hasPackage = !!user.package;
+        const milestoneMet =
+          user?.milestones?.[user.package]?.rewarded || user.withdrawUnlocked;
+
+        if (!hasPackage && !milestoneMet) continue; // 🚫 Skip ineligible users
+
+        const currentBalance = user.balance || 0;
+        const currentBonusWithdrawable = user.bonusWithdrawable || 0;
+
+        const newBonusTotal = currentBonusWithdrawable + bonus;
+
+        // Determine actual milestone-based withdrawable (if any)
+        const milestoneUnlocked =
+          user?.milestones?.[user.package]?.rewarded || user.withdrawUnlocked;
+          //withdraw changes
+        const currentWithdrawable = user.withdrawable || 0;
+
+        updates[`users/${uid}/balance`] = currentBalance + bonus;
+        updates[`users/${uid}/bonusWithdrawable`] = newBonusTotal;
+        //withdraw changes
+        updates[`users/${uid}/withdrawable`] = currentWithdrawable + bonus;
+        updates[`users/${uid}/bonusEarned`] = bonus;
+
+        const newNotification = {
+          subject: "🎁 Bonus Credited!",
+          message: `${message}\n\nYou've received Rs. ${bonus} as a milestone reward.`,
+          timestamp: now,
+          read: false,
+        };
+
+        await push(ref(db, `notifications/${uid}`), newNotification);
+      }
+
+      
+
+      const recipientCount = Object.keys(updates).filter((key) =>
+        key.endsWith("/balance")
+      ).length;
+
+      await update(ref(db), updates);
+      setStatus("success");
+      // alert("✅ Bonus distributed only to eligible users!");
+      setAlert({
+        visible: true,
+        type: "success",
+        message: `✅ Bonus distributed to ${recipientCount} eligible user${
+          recipientCount === 1 ? "" : "s"
+        }!`,
+      });
+    } catch (err) {
+      console.error("🔥 Bonus distribution failed:", err);
       setStatus("error");
-      return alert("No users found");
+      // alert("Something went wrong while distributing the bonus.");
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "Something went wrong while distributing the bonus.",
+      });
     }
-
-    const allUsers = usersSnap.val();
-    const updates = {};
-    const now = Date.now();
-
-    for (const [uid, user] of Object.entries(allUsers)) {
-      const hasPackage = !!user.package;
-      const milestoneMet =
-        user?.milestones?.[user.package]?.rewarded || user.withdrawUnlocked;
-
-      if (!hasPackage && !milestoneMet) continue; // 🚫 Skip ineligible users
-
-      const currentBalance = user.balance || 0;
-      const currentBonusWithdrawable = user.bonusWithdrawable || 0;
-
-      const newBonusTotal = currentBonusWithdrawable + bonus;
-
-      // Determine actual milestone-based withdrawable (if any)
-      const milestoneUnlocked =
-        user?.milestones?.[user.package]?.rewarded || user.withdrawUnlocked;
-      const milestoneAmount = milestoneUnlocked ? currentBalance : 300;
-
-      updates[`users/${uid}/balance`] = currentBalance + bonus;
-      updates[`users/${uid}/bonusWithdrawable`] = newBonusTotal;
-      updates[`users/${uid}/withdrawable`] = milestoneAmount + newBonusTotal;
-      updates[`users/${uid}/bonusEarned`] = bonus;
-
-      const newNotification = {
-        subject: "🎁 Bonus Credited!",
-        message: `${message}\n\nYou've received Rs. ${bonus} as a milestone reward.`,
-        timestamp: now,
-        read: false,
-      };
-
-      await push(ref(db, `notifications/${uid}`), newNotification);
-    }
-
-    await update(ref(db), updates);
-    setStatus("success");
-    alert("✅ Bonus distributed only to eligible users!");
-  } catch (err) {
-    console.error("🔥 Bonus distribution failed:", err);
-    setStatus("error");
-    alert("Something went wrong while distributing the bonus.");
-  }
-};
-
+  };
 
   return (
     <AdminLayout>

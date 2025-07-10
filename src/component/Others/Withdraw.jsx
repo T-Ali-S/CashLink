@@ -31,12 +31,7 @@ export default function Withdraw() {
           ? true
           : data?.milestones?.[data.package]?.rewarded || data.withdrawUnlocked;
 
-        const baseAmount = milestoneUnlocked ? data.balance || 0 : 300;
-
-        const bonusAmount = data.bonusWithdrawable || 0;
-        const total = baseAmount + bonusAmount;
-
-        setWithdrawable(total);
+        setWithdrawable(data.withdrawable || 0);
 
         setForm((prev) => ({
           ...prev,

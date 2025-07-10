@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from "react-router-dom";
 import Navbar from "./component/common/navbar";
 import Signin from "./component/common/signIn";
 import Home from "./component/common/Home";
@@ -17,25 +21,61 @@ import DistributeBonus from "./component/Admin/DistributeBonus";
 import InitLiveTracker from "./component/common/InitLiveTracker";
 import { auth } from "./firebase";
 import Contact from "./component/common/Contact";
-
+import { useContext } from "react";
+import { AlertContext } from "./component/context/AlertContext";
+import Alert from "./component/common/Alert";
+import { onAuthStateChanged } from "firebase/auth";
+import { db } from "./firebase";
+import { ref, get } from "firebase/database";
 
 function App() {
+  const [userData, setUserData] = useState(null);
+
+  function WithNavbar({ children }) {
+    return (
+      <>
+        <Navbar userData={userData} />
+        {children}
+      </>
+    );
+  }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const snap = await get(ref(db, `users/${user.uid}`));
+        if (snap.exists()) {
+          const data = snap.val();
+          setUserData({
+            ...data,
+            uid: user.uid,
+            role: data.role || "user",
+          });
+        }
+      } else {
+        setUserData(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const router = createBrowserRouter([
     {
       path: "/",
       element: (
-        <>
-          <Navbar />
+        <WithNavbar>
           <Home />
-        </>
+        </WithNavbar>
       ),
     },
     {
       path: "/admin",
       element: (
         <RequireAdmin>
-          <Navbar />
-          <AdminDashboard />
+          <WithNavbar>
+            <AdminDashboard />
+          </WithNavbar>
         </RequireAdmin>
       ),
     },
@@ -43,8 +83,9 @@ function App() {
       path: "/admin/user/:uid",
       element: (
         <RequireAdmin>
-          <Navbar />
-          <ManageUser />
+          <WithNavbar>
+            <ManageUser />
+          </WithNavbar>
         </RequireAdmin>
       ),
     },
@@ -53,8 +94,23 @@ function App() {
       path: "/Signin",
       element: (
         <>
-          <Navbar />
+          {/* <WithNavbar>
+
           <Signin />
+          </WithNavbar> */}
+          {userData === null ? (
+            <Signin />
+          ) : userData.role === "admin" ? (
+            <RequireAdmin>
+              <Navigate to="/admin" />
+            </RequireAdmin>
+          ) : (
+            <Navigate to="/" />
+          )}
+
+          {/* {
+            user ? <Navigate to="/" />: <Signin/>
+          } */}
         </>
       ),
     },
@@ -62,8 +118,9 @@ function App() {
       path: "/Signup",
       element: (
         <>
-          <Navbar />
-          <Signup />
+          <WithNavbar>
+            <Signup />
+          </WithNavbar>
         </>
       ),
     },
@@ -71,26 +128,29 @@ function App() {
       path: "/profile",
       element: (
         <>
-          <Navbar />
-          <Profile />
+          <WithNavbar>
+            <Profile />
+          </WithNavbar>
         </>
       ),
     },
     {
-  path: "/contact",
-  element: (
-    <>
-      <Navbar />
-      <Contact />
-    </>
-  ),
-},
+      path: "/contact",
+      element: (
+        <>
+          <WithNavbar>
+            <Contact />
+          </WithNavbar>
+        </>
+      ),
+    },
     {
       path: "/start-with-nothing",
       element: (
         <>
-          <Navbar />
-          <StartWithNothing />
+          <WithNavbar>
+            <StartWithNothing />
+          </WithNavbar>
         </>
       ),
     },
@@ -98,8 +158,9 @@ function App() {
       path: "/NotificationPanel",
       element: (
         <>
-          <Navbar />
-          <NotificationPanel />
+          <WithNavbar>
+            <NotificationPanel />
+          </WithNavbar>
         </>
       ),
     },
@@ -107,8 +168,9 @@ function App() {
       path: "/withdraw",
       element: (
         <>
-          <Navbar />
-          <Withdraw />
+          <WithNavbar>
+            <Withdraw />
+          </WithNavbar>
         </>
       ),
     },
@@ -116,8 +178,9 @@ function App() {
       path: "/transactions",
       element: (
         <>
-          <Navbar />
-          <TransactionLog />
+          <WithNavbar>
+            <TransactionLog />
+          </WithNavbar>
         </>
       ),
     },
@@ -125,8 +188,12 @@ function App() {
       path: "/transactionsAdminView",
       element: (
         <>
-          <Navbar />
-          <TransactionAdminView />
+          <WithNavbar>
+            <RequireAdmin>
+              <TransactionAdminView />
+            </RequireAdmin>
+            
+          </WithNavbar>
         </>
       ),
     },
@@ -134,8 +201,11 @@ function App() {
       path: "/distribute-bonus",
       element: (
         <>
-          <Navbar />
-          <DistributeBonus />
+          <WithNavbar>
+            <RequireAdmin>
+              <DistributeBonus />
+            </RequireAdmin>
+          </WithNavbar>
         </>
       ),
     },

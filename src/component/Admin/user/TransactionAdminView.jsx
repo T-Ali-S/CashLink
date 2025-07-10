@@ -30,7 +30,7 @@ export default function TransactionAdminView({ userId }) {
   };
 
   if (transactions.length === 0) {
-    return <p className="text-sm text-gray-400">No withdrawal history for this user.</p>;
+    return <p className="text-sm text-center text-gray-400">No withdrawal history for this user.</p>;
   }
 
   return (
