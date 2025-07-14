@@ -99,7 +99,9 @@ function App() {
           <Signin />
           </WithNavbar> */}
           {userData === null ? (
-            <Signin />
+             <WithNavbar>
+              <Signin />
+          </WithNavbar> 
           ) : userData.role === "admin" ? (
             <RequireAdmin>
               <Navigate to="/admin" />

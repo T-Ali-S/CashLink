@@ -124,7 +124,7 @@ export default function Navbar({ userData }) {
             Plan
           </Link>
 
-          <Link to="/contact" className="hover:text-gold200">
+          <Link to="/contact?mode=contact" className="hover:text-gold200">
             Contact
           </Link>
         </div>
@@ -247,7 +247,7 @@ export default function Navbar({ userData }) {
           <Link to="/#packages" className="hover:text-gray-300">
             Plan
           </Link>
-          <Link to="/contact" className="hover:text-gray-300">
+          <Link to="/contact?mode=contact" className="hover:text-gray-300">
             Contact
           </Link>
 

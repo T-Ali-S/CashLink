@@ -35,8 +35,9 @@ export default function TransactionAdminView({ userId }) {
 
   return (
     <div className="mt-4 max-h-80 overflow-y-auto text-sm border border-gray-700 rounded">
-      <table className="w-full text-left">
-        <thead className="bg-gray-800 text-gray-300">
+
+      <table className="min-w-[640px] w-full text-left sticky top-0 z-10 shadow-sm">
+        <thead className=" bg-gray-800 text-gray-300 sticky top-0 z-10">
           <tr>
             <th className="py-2 px-3">Amount</th>
             <th className="py-2 px-3">Method</th>
@@ -45,7 +46,7 @@ export default function TransactionAdminView({ userId }) {
             <th className="py-2 px-3">Date</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-white">
           {transactions.map((txn) => (
             <tr key={txn.id} className="border-t border-gray-700">
               <td className="py-2 px-3 text-green-400 font-semibold">

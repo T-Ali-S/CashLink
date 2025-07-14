@@ -264,7 +264,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center  text-white">
+      <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center  text-white md:-mb-36">
         {/* Left Side: Dummy Content */}
         <div className="w-full md:w-1/2 p-6 md:p-12 text-center md:text-left">
           <h2 className="text-4xl md:text-5xl font-bold mb-5 text-yellow-300">

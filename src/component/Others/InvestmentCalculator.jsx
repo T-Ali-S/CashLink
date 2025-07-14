@@ -32,7 +32,7 @@ export default function InvestmentCalculator() {
   };
 
   return (
-    <section className="min-h-screen w-full flex flex-col justify-center items-center  px-4 py-12">
+    <section className="min-h-screen w-full flex flex-col justify-center items-center  px-4 py-12 md:-mt-36 md:-mb-36">
       <h2 className="text-3xl sm:text-4xl font-bold text-gold100 text-center mb-6">
         Investment Calculator
       </h2>

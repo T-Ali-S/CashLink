@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { auth, db } from "../../firebase";
-import { ref, push, get } from "firebase/database";
+import { ref, push, get, update } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../Admin/AdminLayout";
+import { AlertContext } from "../context/AlertContext";
 
 export default function Withdraw() {
   const [form, setForm] = useState({
@@ -15,6 +16,7 @@ export default function Withdraw() {
   const [withdrawable, setWithdrawable] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { setAlert } = useContext(AlertContext);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -52,29 +54,64 @@ export default function Withdraw() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const user = auth.currentUser;
-    const requestAmount = parseInt(form.amount);
+    try {
+      const user = auth.currentUser;
+      const requestAmount = parseInt(form.amount);
 
-    if (!user || !requestAmount || !form.accountNumber) return;
+      if (!user || !requestAmount || !form.accountNumber) return;
 
-    if (requestAmount > withdrawable) {
-      alert("❌ You cannot withdraw more than your allowed limit.");
-      return;
+      const userRef = ref(db, `users/${user.uid}`);
+      const userSnap = await get(userRef);
+
+      if (!userSnap.exists()) return;
+
+      const userData = userSnap.val();
+      const currentWithdrawable = userData.withdrawable || 0;
+      const currentBalance = userData.balance || 0;
+
+      if (requestAmount > currentWithdrawable) {
+        setAlert({
+          visible: true,
+          type: "error",
+          message: "❌ You cannot withdraw more than your allowed limit.",
+        });
+        // alert("❌ You cannot withdraw more than your allowed limit.");
+        return;
+      }
+
+      // 1️⃣ Create the withdrawal transaction
+      const newTxn = {
+        ...form,
+        amount: requestAmount,
+        status: "Pending",
+        createdAt: Date.now(),
+      };
+
+      await push(ref(db, `withdrawals/${user.uid}`), newTxn);
+
+      // 2️⃣ Update Firebase to subtract the withdrawn amount
+      await update(userRef, {
+        withdrawable: currentWithdrawable - requestAmount,
+        balance: currentBalance - requestAmount,
+      });
+
+      // 3️⃣ Confirm and navigate
+      setAlert({
+        visible: true,
+        type: "success",
+        message: "✅ Withdrawal request submitted successfully!",
+      });
+      // alert("✅ Withdrawal request submitted successfully!");
+      navigate("/profile?tab=transaction");
+    } catch (error) {
+      console.error("Withdrawal failed:", error);
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "❌ Something went wrong. Please try again later.",
+      });
     }
-
-    const newTxn = {
-      ...form,
-      amount: requestAmount,
-      status: "Pending",
-      createdAt: Date.now(),
-    };
-
-    await push(ref(db, `withdrawals/${user.uid}`), newTxn);
-    alert("✅ Withdrawal request submitted successfully!");
-
-    navigate("/transactions");
   };
-
   if (loading) return <p className="text-white">Loading...</p>;
 
   return (

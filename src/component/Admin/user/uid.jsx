@@ -5,7 +5,10 @@ import { db } from "../../../firebase";
 import TransactionAdminView from "../user/TransactionAdminView";
 import { runTransaction } from "firebase/database";
 import { AlertContext } from "../../context/AlertContext";
+import { useNavigate } from "react-router-dom";
+import { IoIosArrowBack } from "react-icons/io";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
+import { SiPantheon } from "react-icons/si";
 
 export default function ManageUser() {
   const { uid } = useParams();
@@ -15,6 +18,7 @@ export default function ManageUser() {
   const [referrals, setReferrals] = useState([]);
   const [referredByUser, setReferredByUser] = useState(null);
   const { setAlert } = useContext(AlertContext);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -274,7 +278,13 @@ export default function ManageUser() {
     <AdminLayout>
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 max-w-3xl mx-auto">
         <h2 className="text-2xl text-white font-bold mb-4">
-          Managing:{" "}
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 px-2 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm"
+        >
+          <IoIosArrowBack />
+        </button>
+          {" "}Managing:{" "}
           <span className="text-gold200">
             {userInfo.name.toUpperCase() || "No username found"}
           </span>
@@ -294,10 +304,9 @@ export default function ManageUser() {
             </span>
           </h4>
 
-
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center mt-4">
             <select
-              className="p-2 border rounded text-black w-full sm:w-auto text-black"
+              className="p-2 border rounded w-full sm:w-auto text-black"
               value={selectedPackage}
               onChange={(e) => setSelectedPackage(e.target.value)}
             >
@@ -316,18 +325,21 @@ export default function ManageUser() {
             </button>
           </div>
 
-          
-          <hr className="mt-10"/>
+          <hr className="mt-10" />
           <h4 className="text-2xl text-center font-bold mt-6 mb-6 text-yellow-400">
             Withdrawal Requests
           </h4>
-          <div className="border border-1 p-20 border-white border-rounded">
+          <div
+          //  className="border border-1 p-20 border-white border-rounded"
+          >
             {userInfo && <TransactionAdminView userId={uid} />}
           </div>
-          
 
-          <div className="mt-8 bg-white p-4 rounded shadow">
-            <h3 className="text-lg font-semibold mb-2">Referral Info</h3>
+          <hr className="mt-10" />
+          <div className="mt-8 bg-white p-4 rounded shadow mb-5">
+            <h3 className="text-2xl text-center font-bold  mb-6 text-yellow-400">
+              Referral Info
+            </h3>
 
             {referredByUser ? (
               <p className="text-sm text-gray-600 mb-2">
@@ -340,7 +352,9 @@ export default function ManageUser() {
               </p>
             )}
 
-            <h4 className="text-sm font-semibold mb-1">Users Referred:</h4>
+            <h4 className="text-center text-yellow-400 text-2xl font-semibold mb-1">
+              Users Referred:
+            </h4>
             {referrals.length > 0 ? (
               <ul className="list-disc list-inside text-sm text-gray-700 max-h-[300px] overflow-auto pr-2">
                 {referrals.map(([refUid, u]) => (

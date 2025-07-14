@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { auth, db } from "../../firebase";
 import { ref, push, get } from "firebase/database";
+import { IoIosArrowBack } from "react-icons/io";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -10,8 +12,10 @@ export default function Contact() {
     message: "",
   });
   const [loading, setLoading] = useState(true);
-
-  const whatsappNumber = "923001234567"; // Replace with your number (no +)
+  const navigate = useNavigate();
+  const whatsappNumber = "923171314376"; // Replace with your number (no +)
+  const location = useLocation();
+  const mode = new URLSearchParams(location.search).get("mode") || "contact";
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -83,11 +87,18 @@ Message: ${form.message || "N/A"}`;
   return (
     <div className="px-4 sm:px-6  md:px-0 mt-24 mb-52">
       <div className="max-w-lg mx-auto bg-gray-900 p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl text-white">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center text-gold200">
-          Contact Us
-        </h2>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-2 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm"
+        >
+          <IoIosArrowBack />
+        </button>
+        <span className="text-2xl sm:text-3xl font-bold   text-gold200">
+          {" "}
+          {mode === "package" ? "Buy Package" : "Contact Us"}
+        </span>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
           {/* Email */}
           <div>
             <label className="block mb-1 text-sm">Email</label>
@@ -117,40 +128,44 @@ Message: ${form.message || "N/A"}`;
           </div>
 
           {/* Package Dropdown */}
-          <div>
-            <label className="block mb-1 text-sm">Select Package</label>
-            <select
-              name="selectedPackage"
-              className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
-              value={form.selectedPackage}
-              onChange={handleChange}
-            >
-              <option value="">-- Optional: Select Package --</option>
-              <option value="bronze">Bronze</option>
-              <option value="silver">Silver</option>
-              <option value="gold">Gold</option>
-              <option value="platinum">Platinum</option>
-              <option value="elite">Elite</option>
-            </select>
-          </div>
+          {mode !== "contact" && (
+            <div>
+              <label className="block mb-1 text-sm">Select Package</label>
+              <select
+                name="selectedPackage"
+                className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
+                value={form.selectedPackage}
+                onChange={handleChange}
+              >
+                <option value="">-- Optional: Select Package --</option>
+                <option value="bronze">Bronze</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
+                <option value="platinum">Platinum</option>
+                <option value="elite">Elite</option>
+              </select>
+            </div>
+          )}
 
           {/* Message */}
-          <div>
-            <label className="block mb-1 text-sm">Message (Optional)</label>
-            <textarea
-              name="message"
-              rows={4}
-              placeholder="Your message..."
-              className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
-              value={form.message}
-              onChange={handleChange}
-            ></textarea>
-          </div>
+          {mode !== "package" && (
+            <div>
+              <label className="block mb-1 text-sm">Message (Optional)</label>
+              <textarea
+                name="message"
+                rows={4}
+                placeholder="Your message..."
+                className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
+                value={form.message}
+                onChange={handleChange}
+              ></textarea>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-gold200 hover:bg-yellow-500 p-3 rounded-lg font-bold text-white transition-transform transform hover:scale-105"
+            className=" w-full bg-gold200 hover:bg-yellow-500 p-3 rounded-lg font-bold text-white transition-transform transform hover:scale-105"
           >
             Submit & Contact on WhatsApp
           </button>

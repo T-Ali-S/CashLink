@@ -8,6 +8,7 @@ import Alert from "./Alert";
 import { useSearchParams } from "react-router-dom";
 import { sendNotification } from "../utils/sendNotification";
 
+
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -15,6 +16,19 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [enteredCode, setEnteredCode] = useState("");
   const [searchParams] = useSearchParams();
+  const availableAvatars = [
+  "/avatars/default.png",
+  "/avatars/avatar1.png",
+  "/avatars/avatar2.png",
+  "/avatars/avatar3.png",
+  "/avatars/avatar4.png",
+  "/avatars/avatar5.png",
+  "/avatars/avatar6.png",
+  "/avatars/avatar7.png",
+];
+const randomAvatar =
+  availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
+
   const [alert, setAlert] = useState({
     visible: false,
     message: "",
@@ -72,7 +86,7 @@ export default function Signup() {
         referredBy: matchedReferrerUid || null,
         balance: 0,
         package: null,
-        avatarUrl: "/avatars/default.png",
+        avatarUrl: randomAvatar,
         // role:"admin",
         role:"user",
         createdAt: new Date().toISOString(),

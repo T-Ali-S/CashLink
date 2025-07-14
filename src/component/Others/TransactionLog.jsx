@@ -76,26 +76,26 @@ export default function TransactionLog() {
             <table className="min-w-[600px] w-full text-left text-sm border border-gray-700">
               <thead className="bg-gray-800 text-gray-300">
                 <tr>
-                  <th className="py-2 px-3">Amount</th>
-                  <th className="py-2 px-3">Method</th>
-                  <th className="py-2 px-3">Account</th>
-                  <th className="py-2 px-3">Status</th>
-                  <th className="py-2 px-3">Date</th>
+                  <th className="py-2 px-3 text-xs sm:text-sm">Amount</th>
+                  <th className="py-2 px-3 text-xs sm:text-sm">Method</th>
+                  <th className="py-2 px-3 text-xs sm:text-sm">Account</th>
+                  <th className="py-2 px-3 text-xs sm:text-sm">Status</th>
+                  <th className="py-2 px-3 text-xs sm:text-sm">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((txn) => (
                   <tr
                     key={txn.id}
-                    className="border-t border-gray-700 bg-gray-500 hover:bg-gray-800"
+                    className="border-t border-gray-700 text-xs sm:text-sm bg-gray-500 hover:bg-gray-800"
                   >
-                    <td className="py-2 px-3 font-medium text-green-400">
+                    <td className="py-2 px-3 text-xs sm:text-sm font-medium text-green-400">
                       Rs. {txn.amount}
                     </td>
-                    <td className="py-2 px-3 capitalize">{txn.method}</td>
-                    <td className="py-2 px-3 font-mono">{txn.accountNumber}</td>
+                    <td className="py-2 px-3 text-xs sm:text-sm capitalize">{txn.method}</td>
+                    <td className="py-2 px-3 text-xs sm:text-sm font-mono">{txn.accountNumber}</td>
                     <td
-                      className={`py-2 px-3 font-semibold ${
+                      className={`py-2 px-3 text-xs sm:text-sm font-semibold ${
                         txn.status === "Pending"
                           ? "text-yellow-400"
                           : txn.status === "Processing"
@@ -105,7 +105,7 @@ export default function TransactionLog() {
                     >
                       {txn.status}
                     </td>
-                    <td className="py-2 px-3 text-gray-800">
+                    <td className="py-2 px-3 text-xs sm:text-sm text-gray-200">
                       {format(new Date(txn.createdAt), "PPPp")}
                     </td>
                   </tr>

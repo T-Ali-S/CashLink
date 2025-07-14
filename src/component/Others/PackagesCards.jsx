@@ -46,13 +46,16 @@ export default function PackagesCards() {
            ${""}
         `}
       >
-
         <div className="relative pt-16 sm:pt-20">
           <div className="absolute -top-16 sm:-top-20 left-1/2 -translate-x-1/2">
             <img
               src={icon}
               alt={`${tier} tier icon`}
-              className="w-24 h-24 sm:w-44 sm:h-28 object-contain drop-shadow-xl transition-transform duration-300 hover:-translate-y-1"
+              className={`${
+                tier.toLowerCase() === "elite"
+                  ? "w-32 h-24 sm:w-60 sm:h-32"
+                  : "w-24 h-24 sm:w-44 sm:h-28"
+              } object-contain drop-shadow-xl transition-transform duration-300 hover:-translate-y-1`}
             />
           </div>
           <h3 className="text-center text-lg font-semibold">{tier} Tier</h3>
@@ -85,25 +88,22 @@ export default function PackagesCards() {
   }
 
   return (
-    <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center">
+    <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center mt-14">
       <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-36 text-center text-gold100">
         Our Investment Packages
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl mb-6 space-y-8">
         <PackageCard
-        
           tier="Bronze"
           icon="/Medals/Bronze.png"
           amount={3000}
           nextDay={10}
           refer={3}
           total={6300}
-          onClick={() => navigate("/Contact")}
-          
+          onClick={() => navigate("/contact?mode=package")}
         />
         <PackageCard
-        
           tier="Silver"
           icon="/Medals/Silver.png"
           // icon="🥈"
@@ -111,10 +111,9 @@ export default function PackagesCards() {
           nextDay={10}
           refer={3}
           total={"10500"}
-          onClick={() => navigate("/Contact")}
+          onClick={() => navigate("/contact?mode=package")}
         />
         <PackageCard
-        
           tier="Gold"
           icon="/Medals/Gold.png"
           // icon="🥇"
@@ -122,14 +121,13 @@ export default function PackagesCards() {
           nextDay={10}
           refer={2}
           total={"21000"}
-          onClick={() => navigate("/Contact")}
+          onClick={() => navigate("/contact?mode=package")}
         />
       </div>
 
       <div className=" grid grid-cols-1 md:grid-cols-5 gap-6 w-full max-w-6xl mt-10">
         <div className=" md:col-span-2 mb-5">
           <PackageCard
-          
             tier="Platinum"
             icon="/Medals/Platinum.png"
             // icon="💎"
@@ -137,19 +135,18 @@ export default function PackagesCards() {
             nextDay={10}
             refer={1}
             total={"105000"}
-            onClick={() => navigate("/Contact")}
+            onClick={() => navigate("/contact?mode=package")}
           />
         </div>
         <div className="md:col-span-3">
           <PackageCard
-          
             tier="Elite"
             icon="/Medals/Elite.png"
             // icon="👑"
             amount={100000}
             daily={5}
             special
-            onClick={() => navigate("/Contact")}
+            onClick={() => navigate("/contact?mode=package")}
           />
         </div>
       </div>
@@ -164,7 +161,7 @@ export default function PackagesCards() {
               navigate("/start-with-nothing");
             }
           }}
-          className="bg-white text-black p-6 rounded-lg shadow-md text-center cursor-pointer hover:bg-gray-300 transition"
+          className="bg-white text-black p-6 rounded-lg shadow-md text-center cursor-pointer hover:bg-gray-300 transition mb-16"
         >
           <h3 className="text-2xl font-bold mb-2">Start With Nothing</h3>
           <p className="text-sm">
