@@ -8,7 +8,6 @@ import Alert from "./Alert";
 import { useSearchParams } from "react-router-dom";
 import { sendNotification } from "../utils/sendNotification";
 
-
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,17 +16,17 @@ export default function Signup() {
   const [enteredCode, setEnteredCode] = useState("");
   const [searchParams] = useSearchParams();
   const availableAvatars = [
-  "/avatars/default.png",
-  "/avatars/avatar1.png",
-  "/avatars/avatar2.png",
-  "/avatars/avatar3.png",
-  "/avatars/avatar4.png",
-  "/avatars/avatar5.png",
-  "/avatars/avatar6.png",
-  "/avatars/avatar7.png",
-];
-const randomAvatar =
-  availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
+    "/avatars/default.png",
+    "/avatars/avatar1.png",
+    "/avatars/avatar2.png",
+    "/avatars/avatar3.png",
+    "/avatars/avatar4.png",
+    "/avatars/avatar5.png",
+    "/avatars/avatar6.png",
+    "/avatars/avatar7.png",
+  ];
+  const randomAvatar =
+    availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 
   const [alert, setAlert] = useState({
     visible: false,
@@ -88,7 +87,7 @@ const randomAvatar =
         package: null,
         avatarUrl: randomAvatar,
         // role:"admin",
-        role:"user",
+        role: "user",
         createdAt: new Date().toISOString(),
         name_lower: name.toLowerCase(), // for lookups
         name_slug: name.toLowerCase().replace(/\s+/g, "-"), // for URLs or slugs
@@ -98,6 +97,10 @@ const randomAvatar =
         type: "success",
         message: "User registered successfully!",
       });
+      if (matchedReferrerUid) {
+        const referrerRef = ref(db, `users/${matchedReferrerUid}`);
+        const refSnap = await get(referrerRef);
+      }
       if (matchedReferrerUid) {
         await sendNotification(
           matchedReferrerUid,

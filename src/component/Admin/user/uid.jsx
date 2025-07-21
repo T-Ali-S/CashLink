@@ -9,6 +9,11 @@ import { useNavigate } from "react-router-dom";
 import { IoIosArrowBack } from "react-icons/io";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 import { SiPantheon } from "react-icons/si";
+import ReferralProgressBar from "../../Admin/ReferralProgressBar";
+import {
+  expireMilestoneIfOverdue,
+  checkAndUnlockMilestone,
+} from "../../utils/milestoneManager";
 
 export default function ManageUser() {
   const { uid } = useParams();
@@ -23,6 +28,7 @@ export default function ManageUser() {
   useEffect(() => {
     const fetchUser = async () => {
       const snapshot = await get(ref(db, `users/${uid}`));
+      await expireMilestoneIfOverdue(uid);
       if (snapshot.exists()) {
         const data = snapshot.val();
         setUserInfo(data);
@@ -45,6 +51,8 @@ export default function ManageUser() {
           );
           setReferrals(referred);
         }
+        // ✅ Trigger milestone check passively when admin views profile
+        await checkAndUnlockMilestone(uid);
       }
       setLoading(false);
     };
@@ -72,204 +80,165 @@ export default function ManageUser() {
   };
 
   const assignPackage = async () => {
-    const packageValues = {
-      bronze: { amount: 3000, requiredReferrals: 3 },
-      silver: { amount: 6000, requiredReferrals: 3 },
-      gold: { amount: 10000, requiredReferrals: 2 },
-      platinum: { amount: 50000, requiredReferrals: 1 },
-      elite: { amount: 100000, requiredReferrals: 0, dailyROI: 0.05 },
+    const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+    const referralQuotas = {
+      bronze: 5,
+      silver: 3,
+      gold: 2,
+      platinum: 2,
+      elite: 1,
+    };
+    const tierAmount = {
+      bronze: 3000,
+      silver: 5000,
+      gold: 10000,
+      platinum: 50000,
+      elite: 100000,
+    };
+    const bonusValues = {
+      silver: 1000,
+      gold: 2000,
+      platinum: 10000,
+      elite: 20000,
     };
 
-    const selected = packageValues[selectedPackage];
-    if (!selected) {
-      setAlert({
+    const selected = selectedPackage;
+    const packageAmount = tierAmount[selected];
+    if (!packageAmount) {
+      return setAlert({
         visible: true,
         type: "error",
         message: "Please select a valid package.",
       });
-      return;
     }
 
-    const packageAmount = selected.amount;
-
+    // Load user data
     const snapshot = await get(ref(db, `users/${uid}`));
     if (!snapshot.exists()) return;
-
     const userData = snapshot.val();
+
+    // ❌ Prevent reassignment of different package if current milestone not completed
+    if (
+      userData.package &&
+      userData.package !== selected &&
+      !userData?.milestones?.[userData.package]?.rewarded
+    ) {
+      return setAlert({
+        visible: true,
+        type: "error",
+        message: `❌ User already has "${userData.package}" active and it's not completed.`,
+      });
+    }
+
+    // 🎯 Set up milestone and reward logic
+    const roiRate =
+      selected === "elite" ? Math.floor(Math.random() * 3) + 1 : 10;
+    const dailyROI = (packageAmount * roiRate) / 100;
+    const firstReward = selected === "elite" ? dailyROI : dailyROI;
+    const rewardPercent = roiRate / 100;
+    const duration = selected === "elite" ? 30 : 20;
+    const deadline = Date.now() + duration * 24 * 60 * 60 * 1000;
+
+    const updatedMilestone = {
+      goal: referralQuotas[selected],
+      earned: 0,
+      rewarded: false,
+      deadline,
+      lockedBonus: 0,
+      lockedROI: selected === "elite" ? dailyROI : 0,
+    };
+
+    const eliteRate = selected === "elite" ? roiRate : null;
+    const eliteLocked = selected === "elite";
+
+    const newBalance = (userData.balance || 0) + firstReward;
+    const newWithdrawable = firstReward;
+
+    // 🔒 Track referrals used for this package
     const allUsersSnap = await get(ref(db, "users"));
     const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
-
-    const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
-
-    const currentTierIndex = tierOrder.indexOf(userData.package);
-    const selectedTierIndex = tierOrder.indexOf(selectedPackage);
-
-    // ✅ Block any assignment if the current package is not completed
-    if (
-      userData.package && // A package is already active
-      userData.package !== selectedPackage // Prevent reassignment of same package
-    ) {
-      const milestoneComplete =
-        userData?.milestones?.[userData.package]?.rewarded || false;
-
-      if (!milestoneComplete) {
-        return setAlert({
-          visible: true,
-          type: "error",
-          message: `❌ User already has "${userData.package}" active and it's not completed.\nComplete the current milestone before assigning "${selectedPackage}".`,
-        });
-      }
-    }
+    const previouslyConsumed = userData.usedPackageRefs || [];
 
     const referrals = Object.entries(allUsers)
       .filter(([refId, u]) => u.referredBy === uid && u.package)
       .map(([refId, u]) => ({ uid: refId, ...u }));
-
-    const previouslyConsumed = userData.usedPackageRefs || [];
-
     const availableRefs = referrals.filter(
       (ref) => !previouslyConsumed.includes(ref.uid)
     );
-
     const refsToConsume = availableRefs
-      .slice(0, selected.requiredReferrals)
+      .slice(0, referralQuotas[selected])
       .map((u) => u.uid);
-    if (userData.package === selectedPackage) {
-      return setAlert({
-        visible: true,
-        type: "error",
-        message: `⚠️ "${selectedPackage}" is already assigned to this user.`,
-      });
-    }
-    const currentBalance = userData.balance || 0;
-    // const userAlreadyHasPackage = userData.package === selectedPackage;
 
-    const isElite = selectedPackage === "elite";
-    const rewardPercent = isElite ? 0.05 : 0.1;
-    const firstReward = selected.amount * rewardPercent;
-
-    // 💰 User gets this as initial balance + withdrawable
-    const newBalance = (userData.balance || 0) + firstReward;
-
-    // 📤 For elite: all earnings are withdrawable immediately
-    // 🛑 For other users: only the first reward is withdrawable, rest unlocks via referrals
-    const newWithdrawable = isElite ? newBalance : firstReward;
-
+    // ✅ Update user record
     await update(ref(db, `users/${uid}`), {
-      package: selectedPackage,
-      [`milestones/${selectedPackage}/rewarded`]: false,
+      package: selected,
+      balance: newBalance,
+      withdrawable: newWithdrawable,
+      eliteDailyROI: eliteLocked ? dailyROI : null,
+      eliteRate,
+      eliteLocked,
+      lastPayoutAt: Date.now(),
+      milestones: {
+        ...userData.milestones,
+        [selected]: updatedMilestone,
+      },
       usedPackageRefs: [...previouslyConsumed, ...refsToConsume],
     });
 
-    await RewardManager.addPackageReward(uid, selectedPackage, firstReward);
+    // 🎁 Referral bonus for referrer (if eligible)
+    if (userData.referredBy) {
+      const refSnap = await get(ref(db, `users/${userData.referredBy}`));
+      if (refSnap.exists()) {
+        const refData = refSnap.val();
+        const refTierIndex = tierOrder.indexOf(refData.package);
+        const newTierIndex = tierOrder.indexOf(selected);
 
-    const trackerSnap = await get(ref(db, "liveTracker"));
-    const tracker = trackerSnap.exists() ? trackerSnap.val() : null;
+        if (
+          newTierIndex >= refTierIndex && // ✅ Still count toward milestone
+          newTierIndex > refTierIndex && // 🧠 Only assign bonus for upward-tier
+          refTierIndex !== -1
+        ) {
+          const bonus = bonusValues[selected] || 0;
+          const refMilestone = refData.milestones?.[refData.package] || {};
+          await update(ref(db, `users/${userData.referredBy}`), {
+            bonusLocked: (refData.bonusLocked || 0) + bonus,
+            milestones: {
+              ...refData.milestones,
+              [refData.package]: {
+                ...refMilestone,
+                earned: (refMilestone.earned || 0) + 1,
+              },
+            },
+          });
+        }
 
-    const totalSnap = await get(ref(db, "liveTracker/total"));
+        await checkAndUnlockMilestone(userData.referredBy);
+      }
+    }
 
+    // 📈 Update investment tracker
     await runTransaction(ref(db, "liveTracker/total"), (prev) => {
       return (prev || 0) + packageAmount;
     });
 
-    if (trackerSnap.exists()) {
-      const totalSnap = await get(ref(db, "liveTracker/total"));
-      const updatedTotal = totalSnap.exists() ? totalSnap.val() : 0;
+    // 🎯 Trigger milestone unlock for current user
+    await checkAndUnlockMilestone(uid);
 
-      const goalEnd = tracker.goalEnd || 200000000;
-      console.log(
-        "🏁 Assigning package:",
-        selectedPackage,
-        "Amount:",
-        packageAmount
-      );
-      console.log(
-        "🧮 Before update: current total =",
-        tracker.total,
-        "→ new total =",
-        updatedTotal
-      );
-
-      if (updatedTotal >= goalEnd) {
-        const newStart = goalEnd;
-        const newEnd = newStart + 50000000;
-
-        await sendToAllUsers(
-          "🎯 Investment Goal Reached!",
-          `Congratulations! The community just crossed Rs. ${goalEnd.toLocaleString()} in total investments! You’ll receive a special bonus soon.`
-        );
-
-        await update(ref(db, "liveTracker"), {
-          total: updatedTotal,
-          goalStart: newStart,
-          goalEnd: newEnd,
-          lastGoalAchievedAt: Date.now(),
-        })
-          .then(() => console.log("✅ Tracker total updated!"))
-          .catch((err) => console.error("🔥 Update failed:", err));
-
-        console.log(`🎯 New goal set: Rs. ${newStart} to Rs. ${newEnd}`);
-      } else {
-        await update(ref(db, "liveTracker"), {
-          total: updatedTotal,
-        });
-      }
-    }
-
-    // 2. If referred, check if their referrer qualifies for reward
-    if (userData.referredBy && selectedPackage !== "elite") {
-      const referrerSnap = await get(ref(db, `users/${userData.referredBy}`));
-      if (referrerSnap.exists()) {
-        const referrer = referrerSnap.val();
-        const allUsersSnap = await get(ref(db, "users"));
-        const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
-
-        const qualifyingReferrals = Object.values(allUsers).filter(
-          (u) => u.referredBy === userData.referredBy && u.package
-        );
-
-        const threshold = selected.requiredReferrals;
-
-        if (
-          qualifyingReferrals.length >= threshold &&
-          selectedPackage !== "elite"
-        ) {
-          console.log(
-            `🔒 Referrer qualifies for milestone — handled in StartWithNothing`
-          );
-          // No immediate bonus — user will claim milestone manually
-        }
-      }
-    }
-
+    // ✅ Confirmation
     setUserInfo((prev) => ({
       ...prev,
-      package: selectedPackage,
+      package: selected,
       balance: newBalance,
     }));
     setAlert({
       visible: true,
       type: "success",
-      message: `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`,
-    });
-
-    // alert(`✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}`);
-    setAlert({
-      visible: true,
-      type: "success",
       message:
-        `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}.\n` +
+        `✅ ${userData.name} assigned "${selected}" and rewarded Rs. ${firstReward}.\n` +
         `${refsToConsume.length} referral${
           refsToConsume.length === 1 ? "" : "s"
         } used to unlock milestone progress.`,
     });
-
-    // alert(
-    //   `✅ ${userData.name} assigned "${selectedPackage}" and rewarded Rs. ${firstReward}.\n` +
-    //     `${refsToConsume.length} referral${
-    //       refsToConsume.length === 1 ? "" : "s"
-    //     } used to unlock milestone progress.`
-    // );
   };
 
   if (loading) return <p className="p-6">Loading user info...</p>;
@@ -278,13 +247,13 @@ export default function ManageUser() {
     <AdminLayout>
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 max-w-3xl mx-auto">
         <h2 className="text-2xl text-white font-bold mb-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-4 px-2 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm"
-        >
-          <IoIosArrowBack />
-        </button>
-          {" "}Managing:{" "}
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-2 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm"
+          >
+            <IoIosArrowBack />
+          </button>{" "}
+          Managing:{" "}
           <span className="text-gold200">
             {userInfo.name.toUpperCase() || "No username found"}
           </span>
@@ -369,6 +338,12 @@ export default function ManageUser() {
               </p>
             )}
           </div>
+          {userInfo?.milestones?.[userInfo.package] && (
+            <ReferralProgressBar
+              milestone={userInfo.milestones[userInfo.package]}
+              referrals={referrals}
+            />
+          )}
         </div>
       </div>
     </AdminLayout>

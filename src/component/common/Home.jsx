@@ -8,6 +8,7 @@ import { get, ref, update } from "firebase/database";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { RewardManager } from "../utils/RewardManager";
 import { MdLoop } from "react-icons/md";
+import { applyDailyROI } from "../utils/roiManager";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
@@ -15,99 +16,18 @@ export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const packageRef = useRef(null);
+  const [roiAdded, setRoiAdded] = useState(null);
+  const trueBalance =
+    (userData?.balance || 0) +
+    (userData?.bonusLocked || 0) +
+    (userData?.bonusWithdrawable || 0);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const snapshot = await get(ref(db, `users/${user.uid}`));
         if (snapshot.exists()) {
           const data = snapshot.val();
-          if (data.package !== "elite") {
-            const allUsersSnap = await get(ref(db, "users"));
-            const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
-
-            const referrals = Object.values(allUsers).filter(
-              (u) => u.referredBy === user.uid
-            );
-            const activated = referrals.filter((u) => u.package);
-
-            const packageRewards = {
-              bronze: 6300,
-              silver: 10500,
-              gold: 21000,
-              platinum: 105000, // ✅ correct value
-            };
-
-            const rawPackage = (data.package || "").trim().toLowerCase();
-
-            if (!rawPackage || !packageRewards[rawPackage]) {
-              console.log("ℹ️ User has no valid package. ROI logic skipped.");
-              return;
-            }
-
-            const reward = packageRewards[rawPackage] || 0;
-            // 🚨 Defensive check for unexpected package values
-            if (data.package !== "elite" && !packageRewards[data.package]) {
-              console.warn("⚠️ Unrecognized package:", data.package);
-              Ho;
-
-              const normalizedPackage = data.package.trim().toLowerCase();
-              const reward = packageRewards[normalizedPackage];
-
-              if (!reward) {
-                console.warn("⚠️ Unrecognized package:", normalizedPackage);
-                // Optional fallback UI — no alert pop-up
-                return;
-              }
-            }
-
-            const now = Date.now();
-            const last = data.lastPayoutAt || 0;
-            const oneDay = 24 * 60 * 60 * 1000;
-
-            if (now - last >= oneDay) {
-              const baseBonus = 300;
-              const fullPaid =
-                data?.milestones?.[data.package]?.rewarded || false;
-
-              if (activated.length >= 3 && !fullPaid) {
-                // All referrals are active → give full reward
-                await update(ref(db, `users/${user.uid}`), {
-                  balance: (data.balance || 0) + reward,
-                  lastPayoutAt: now,
-                  [`milestones/${data.package}/rewarded`]: true,
-                });
-                console.log("🎯 Full reward granted instantly:", reward);
-              } else {
-                // Incomplete → grow at 10% daily
-                const growth = (reward - baseBonus) * 0.1;
-                await RewardManager.addDailyROI(user.uid, growth);
-                console.log("⏳ ROI added at 10% growth:", growth);
-              }
-            }
-          }
-          if (data.package === "elite") {
-            const now = Date.now();
-            const last = data.lastPayoutAt || 0;
-            const oneDay = 24 * 60 * 60 * 1000;
-            const eliteCap = 200000;
-            const roi = 5000;
-
-            if (now - last >= oneDay && (data.balance || 0) < eliteCap) {
-              const nextBalance = Math.min((data.balance || 0) + roi, eliteCap);
-
-              await update(ref(db, `users/${user.uid}`), {
-                balance: nextBalance,
-                withdrawable: nextBalance, // 🔓 elite is always unlocked
-                lastPayoutAt: now,
-              });
-
-              data.balance = nextBalance;
-              data.withdrawable = nextBalance;
-              data.lastPayoutAt = now;
-
-              console.log("💸 Elite ROI added:", roi);
-            }
-          }
           setUserData({
             ...data,
             uid: user.uid,
@@ -121,6 +41,14 @@ export default function Home() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    async function triggerROI() {
+      const amount = await applyDailyROI(userData.uid);
+      if (amount) setRoiAdded(amount);
+    }
+    if (userData?.uid) triggerROI();
+  }, [userData?.uid]);
 
   useEffect(() => {
     if (location.hash === "#packages" && packageRef.current) {
@@ -138,28 +66,12 @@ export default function Home() {
     fetchLiveTotal();
   }, []);
 
-  //For CheckOut Error stuck at 300//////////////////
-  // let milestoneUnlocked = false;
-  // let baseWithdrawable = 0;
-
-  // if (userData) {
-  //   milestoneUnlocked =
-  //     userData.package === "elite" ||
-  //     userData?.milestones?.[userData.package]?.rewarded ||
-  //     userData?.withdrawUnlocked;
-
-  //   baseWithdrawable = milestoneUnlocked ? userData?.balance || 0 : 300;
-  // }
-
-  // const bonusOnly = userData?.bonusWithdrawable || 0;
-  // const totalWithdrawable = baseWithdrawable + bonusOnly;
-
   const totalWithdrawable = userData?.withdrawable || 0;
 
   const milestoneUnlocked =
-  userData?.package === "elite" ||
-  userData?.milestones?.[userData.package]?.rewarded ||
-  userData?.withdrawUnlocked;
+    userData?.package === "elite" ||
+    userData?.milestones?.[userData.package]?.rewarded ||
+    userData?.withdrawUnlocked;
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -187,7 +99,7 @@ export default function Home() {
                 Your Balance
               </h3>
               <p className="text-3xl font-bold mt-2">
-                Rs. {userData.balance || 0}
+                Rs. {trueBalance || 0}
                 <button
                   onClick={async () => {
                     const user = auth.currentUser;
@@ -220,13 +132,23 @@ export default function Home() {
               )}
 
               <div className="text-sm text-gray-500 mt-2">
-                <span>Withdrawable: </span>
+                <span title="Referral bonuses are excluded until milestone is completed">
+                  Withdrawable:{" "}
+                </span>
                 <span className="text-green-700 font-bold">
                   Rs. {userData?.withdrawable || 0}
                 </span>
                 <div className="text-xs text-gray-400 mt-1">
-                  (Includes Rs. {userData?.bonusWithdrawable || 0} bonus
-                  rewards)
+                  You’ve earned Rs. {userData?.bonusWithdrawable || 0} in goal
+                  bonuses.
+                  <br />
+                  Rs. {userData?.bonusLocked || 0} is pending until your
+                  milestone is completed.
+                  {roiAdded && (
+                    <p className="text-xs text-green-600 mt-1">
+                      💸 Rs. {roiAdded} added to your balance today.
+                    </p>
+                  )}
                 </div>
               </div>
 

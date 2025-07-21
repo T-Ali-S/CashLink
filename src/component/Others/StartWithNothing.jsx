@@ -12,11 +12,11 @@ export default function StartWithNothing() {
   const navigate = useNavigate();
 
   const packageGoals = {
-    bronze: { target: 10, reward: 6300 },
-    silver: { target: 7, reward: 10500 },
-    gold: { target: 4, reward: 21000 },
-    platinum: { target: 2, reward: 50000 },
-    elite: { target: 1, reward: 100000 },
+    bronze: { target: 10, reward: 5000 },
+    silver: { target: 8, reward: 10000 },
+    gold: { target: 5, reward: 15000 },
+    platinum: { target: 3, reward: 20000 },
+    elite: { target: 1, reward: 25000 },
   };
 
   useEffect(() => {

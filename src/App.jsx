@@ -120,9 +120,21 @@ function App() {
       path: "/Signup",
       element: (
         <>
-          <WithNavbar>
+          {/* <WithNavbar>
             <Signup />
-          </WithNavbar>
+          </WithNavbar> */}
+
+          {userData === null ? (
+             <WithNavbar>
+              <Signup />
+          </WithNavbar> 
+          ) : userData.role === "admin" ? (
+            <RequireAdmin>
+              <Navigate to="/admin" />
+            </RequireAdmin>
+          ) : (
+            <Navigate to="/" />
+          )}
         </>
       ),
     },

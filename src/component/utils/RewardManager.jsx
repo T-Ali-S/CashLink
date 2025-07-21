@@ -1,8 +1,6 @@
-// component/utils/RewardManager.js
-
 import { ref, get, update } from "firebase/database";
 import { db } from "../../firebase";
-import { sendNotification } from "./sendNotification"; // Already in your utils folder
+import { sendNotification } from "./sendNotification"; 
 
 export const RewardManager = {
   async addMilestoneReward(userId, tier, amount) {
