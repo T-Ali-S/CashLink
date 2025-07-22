@@ -10,9 +10,11 @@ import { IoIosArrowBack } from "react-icons/io";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 import { SiPantheon } from "react-icons/si";
 import ReferralProgressBar from "../../Admin/ReferralProgressBar";
+import useMilestoneStatus from "../../Others/hooks/useMilestoneStatus"
 import {
   expireMilestoneIfOverdue,
   checkAndUnlockMilestone,
+  processROIandUnlock,
 } from "../../utils/milestoneManager";
 
 export default function ManageUser() {
@@ -24,6 +26,7 @@ export default function ManageUser() {
   const [referredByUser, setReferredByUser] = useState(null);
   const { setAlert } = useContext(AlertContext);
   const navigate = useNavigate();
+  const milestone = useMilestoneStatus(uid, selectedPackage);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -52,7 +55,7 @@ export default function ManageUser() {
           setReferrals(referred);
         }
         // ✅ Trigger milestone check passively when admin views profile
-        await checkAndUnlockMilestone(uid);
+        await processROIandUnlock(uid);
       }
       setLoading(false);
     };
@@ -144,8 +147,8 @@ export default function ManageUser() {
       earned: 0,
       rewarded: false,
       deadline,
-      lockedBonus: 0,
       lockedROI: selected === "elite" ? dailyROI : 0,
+      initialCredit: selected === "elite" ? firstReward : 0,
     };
 
     const eliteRate = selected === "elite" ? roiRate : null;
@@ -177,7 +180,7 @@ export default function ManageUser() {
       eliteDailyROI: eliteLocked ? dailyROI : null,
       eliteRate,
       eliteLocked,
-      lastPayoutAt: Date.now(),
+      // lastPayoutAt: Date.now(),
       milestones: {
         ...userData.milestones,
         [selected]: updatedMilestone,
@@ -193,26 +196,31 @@ export default function ManageUser() {
         const refTierIndex = tierOrder.indexOf(refData.package);
         const newTierIndex = tierOrder.indexOf(selected);
 
-        if (
-          newTierIndex >= refTierIndex && // ✅ Still count toward milestone
-          newTierIndex > refTierIndex && // 🧠 Only assign bonus for upward-tier
-          refTierIndex !== -1
-        ) {
+        // Only award if referrer has an active package
+        if (refTierIndex !== -1 && newTierIndex >= refTierIndex) {
           const bonus = bonusValues[selected] || 0;
           const refMilestone = refData.milestones?.[refData.package] || {};
+
           await update(ref(db, `users/${userData.referredBy}`), {
-            bonusLocked: (refData.bonusLocked || 0) + bonus,
             milestones: {
               ...refData.milestones,
               [refData.package]: {
                 ...refMilestone,
                 earned: (refMilestone.earned || 0) + 1,
+                lockedBonus: (refMilestone.lockedBonus || 0) + bonus,
               },
             },
           });
-        }
+          console.log(
+            `🪙 Referral bonus of ₹${bonus} added to ${userData.referredBy}`
+          );
 
-        await checkAndUnlockMilestone(userData.referredBy);
+          await processROIandUnlock(userData.referredBy);
+        } else {
+          console.log(
+            `⚠️ ${userData.referredBy} has no package — bonus not credited`
+          );
+        }
       }
     }
 
@@ -337,13 +345,8 @@ export default function ManageUser() {
                 No referrals by this user.
               </p>
             )}
+            <ReferralProgressBar milestone={milestone} referrals={referrals} />
           </div>
-          {userInfo?.milestones?.[userInfo.package] && (
-            <ReferralProgressBar
-              milestone={userInfo.milestones[userInfo.package]}
-              referrals={referrals}
-            />
-          )}
         </div>
       </div>
     </AdminLayout>

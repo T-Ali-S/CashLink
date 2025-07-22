@@ -9,6 +9,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { RewardManager } from "../utils/RewardManager";
 import { MdLoop } from "react-icons/md";
 import { applyDailyROI } from "../utils/roiManager";
+import { processROIandUnlock } from "../utils/milestoneManager";
+import useMilestoneStatus from "../Others/hooks/useMilestoneStatus";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
@@ -16,7 +18,6 @@ export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const packageRef = useRef(null);
-  const [roiAdded, setRoiAdded] = useState(null);
   const trueBalance =
     (userData?.balance || 0) +
     (userData?.bonusLocked || 0) +
@@ -43,11 +44,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function triggerROI() {
-      const amount = await applyDailyROI(userData.uid);
-      if (amount) setRoiAdded(amount);
+    async function triggerCombinedLogic() {
+      await processROIandUnlock(userData.uid);
+
+      const milestoneSnap = await get(
+        ref(db, `users/${userData.uid}/milestones/${userData.package}`)
+      );
+      if (milestoneSnap.exists()) {
+        console.log("🧾 Milestone after unlock:", milestoneSnap.val());
+      }
+
+      const snap = await get(ref(db, `users/${userData.uid}`));
+      if (snap.exists()) {
+        const fresh = snap.val();
+        setUserData({ ...fresh, uid: userData.uid });
+      }
+
+      if (unlocked) {
+        console.log(`🏆 Milestone unlocked during login for ${userData.uid}`);
+      }
     }
-    if (userData?.uid) triggerROI();
+
+    if (userData?.uid) triggerCombinedLogic();
   }, [userData?.uid]);
 
   useEffect(() => {
@@ -68,10 +86,7 @@ export default function Home() {
 
   const totalWithdrawable = userData?.withdrawable || 0;
 
-  const milestoneUnlocked =
-    userData?.package === "elite" ||
-    userData?.milestones?.[userData.package]?.rewarded ||
-    userData?.withdrawUnlocked;
+  const milestone = useMilestoneStatus(userData?.uid, userData?.package);
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -139,16 +154,29 @@ export default function Home() {
                   Rs. {userData?.withdrawable || 0}
                 </span>
                 <div className="text-xs text-gray-400 mt-1">
-                  You’ve earned Rs. {userData?.bonusWithdrawable || 0} in goal
-                  bonuses.
+                  {/* You’ve earned Rs. {userData?.bonusWithdrawable || 0} in goal
+                  bonuses. */}
                   <br />
-                  Rs. {userData?.bonusLocked || 0} is pending until your
-                  milestone is completed.
-                  {roiAdded && (
-                    <p className="text-xs text-green-600 mt-1">
-                      💸 Rs. {roiAdded} added to your balance today.
-                    </p>
+                  {!milestone.loading && (
+                    <div className="mt-2 text-sm text-gray-700">
+                      <span title={milestone.tooltip}>
+                        {milestone.statusText}
+                      </span>
+                      <br />
+                      {!milestone.rewarded && !milestone.expired && (
+                        <span>
+                          You need <b>{milestone.referralsNeeded}</b> more
+                          referral
+                          {milestone.referralsNeeded !== 1 && "s"} to unlock
+                          rewards.
+                          {milestone.timeLeft !== null &&
+                            ` (${milestone.timeLeft} days left)`}
+                        </span>
+                      )}
+                    </div>
                   )}
+                  Rs. {milestone.lockedBonus || 0} is pending until your
+                  milestone is completed.
                 </div>
               </div>
 
@@ -201,13 +229,13 @@ export default function Home() {
             <span className="text-2xl font-bold text-white ">
               {" "}
               Get Bouses at every MileStone!
-              {milestoneUnlocked && (
+              {/* {milestoneUnlocked && (
                 <div className="mt-2">
                   <span className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full animate-pulse">
                     🎉 Package Milestone Unlocked!
                   </span>
                 </div>
-              )}
+              )} */}
             </span>
           </div>
         </div>

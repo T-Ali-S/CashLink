@@ -16,14 +16,14 @@ export default function ReferralProgressBar({ milestone }) {
 
   return (
     <div className="mt-4 mb-6">
-      <h4 className="font-semibold text-sm text-gray-200 mb-1">Referral Progress</h4>
+      <h4 className="font-semibold  text-yellow-400 text-2xl text-center mb-5">Referral Progress</h4>
       <div className="w-full bg-gray-700 rounded-full h-4">
         <div
           className={`${barColor} h-4 rounded-full transition-all duration-300`}
           style={{ width: `${percent}%` }}
         />
       </div>
-      <p className="text-xs text-gray-300 mt-1">
+      <p className="text-xs text-black mt-3">
         {earned} / {goal} referrals completed
         {daysLeft > 0
           ? ` • ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`

@@ -110,7 +110,7 @@ export default function Signup() {
       }
 
       // alert("User registered successfully!");
-      setTimeout(() => navigate("/Signin"), 2000);
+      setTimeout(() => navigate("/"), 2000);
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
         setAlert({

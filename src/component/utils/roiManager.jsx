@@ -18,6 +18,8 @@ export async function applyDailyROI(uid) {
   const { package: pkg } = userData;
   if (!pkg) return null;
 
+  const rate = userData.eliteRate || 10;
+  const dailyAmount = (tierAmount[pkg] * rate) / 100;
   const now = Date.now();
   const last = userData.lastPayoutAt || 0;
   const oneDay = 24 * 60 * 60 * 1000;
@@ -25,14 +27,6 @@ export async function applyDailyROI(uid) {
   // ⛔ Stop if ROI already applied within 24h
   if (now - last < oneDay) return null;
 
-  // 🔒 Elite cap check (before anything else)
-  // const rate = userData.eliteRate || 10;
-  // const dailyAmount = (tierAmount[pkg] * rate) / 100;
-  // if (pkg === "elite") {
-  //   const eliteCap = 150000;
-  //   const projectedBalance = (userData.balance || 0) + dailyAmount;
-  //   if (projectedBalance > eliteCap) return null;
-  // }
   const roiCap = {
     bronze: 6300,
     silver: 10500,
@@ -70,11 +64,45 @@ export async function applyDailyROI(uid) {
   }
 
   // 🛠 Unified Firebase update
-  await update(userRef, {
-    balance: (userData.balance || 0) + dailyAmount,
-    withdrawable: newWithdrawable,
-    [`milestones/${pkg}/lockedROI`]: newLockedROI,
-    lastPayoutAt: now,
+  await runTransaction(userRef, (data) => {
+    if (!data) return;
+
+    const last = data.lastPayoutAt || 0;
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    if (now - last < oneDay) return; // 🚫 Block if already paid within 24h
+
+    const dailyAmount =
+      (tierAmount[data.package] * (data.eliteRate || 10)) / 100;
+
+    data.balance = (data.balance || 0) + dailyAmount;
+
+    const milestone = data.milestones?.[data.package] || {};
+    const milestoneCompleted = milestone.rewarded || false;
+
+    if (data.package === "elite") {
+      const canWithdrawElite = !data.eliteLocked;
+      if (canWithdrawElite) {
+        data.withdrawable = (data.withdrawable || 0) + dailyAmount;
+      } else {
+        milestone.lockedROI = (milestone.lockedROI || 0) + dailyAmount;
+      }
+    } else {
+      if (milestoneCompleted) {
+        data.withdrawable = (data.withdrawable || 0) + dailyAmount;
+      } else {
+        milestone.lockedROI = (milestone.lockedROI || 0) + dailyAmount;
+      }
+    }
+
+    data.milestones = {
+      ...data.milestones,
+      [data.package]: milestone,
+    };
+    data.lastPayoutAt = now;
+
+    return data;
   });
 
   console.log(`✅ Daily ROI added for ${uid}: Rs. ${dailyAmount}`);

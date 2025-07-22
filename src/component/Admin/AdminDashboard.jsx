@@ -3,6 +3,7 @@ import { ref, get } from "firebase/database";
 import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
+import TestMilestonePanel from "./test/TestMilestonePanel";
 
 export default function AdminDashboard() {
   const [query, setQuery] = useState("");
@@ -29,7 +30,7 @@ export default function AdminDashboard() {
         <h1 className="text-center text-4xl sm:text-5xl font-bold text-gold200 mb-10">
           Admin Dashboard
         </h1>
-
+        <TestMilestonePanel />
         {/* Search bar */}
         <div className="flex flex-col sm:flex-row items-center gap-3 mb-8">
           <input
