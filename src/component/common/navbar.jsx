@@ -17,7 +17,6 @@ export default function Navbar({ userData }) {
   const mobileMenuRef = useRef();
   const avatarToggleRef = useRef();
   const { setAlert } = useContext(AlertContext);
-  
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -191,7 +190,20 @@ export default function Navbar({ userData }) {
                     <p className="text-sm text-gray-600">{userData?.email}</p>
                   </div>
 
+                  {userData?.role === "admin" && (
+                    <>
+                      <Link
+                        to="/admin"
+                        className="block w-full text-left px-4 py-3 bg-gray-100 hover:bg-gold200 hover:text-white text-sm"
+                      >
+                        📊 Dashboard
+                      </Link>
+                    </>
+                  )}
                   <div className="flex flex-col px-4 py-2 text-sm">
+                    {/* <Link to="/profile" className="block w-full text-left px-4 py-3 bg-gray-100 hover:bg-gold200 hover:text-white text-sm">
+                      Dashboard
+                    </Link> */}
                     <Link to="/profile" className="py-2 hover:text-yellow-600">
                       👤 Profile
                     </Link>
@@ -220,7 +232,7 @@ export default function Navbar({ userData }) {
                     {userData?.role === "admin" && (
                       <>
                         <Link
-                          to="/admin"
+                          to="/admin/users"
                           className="py-2 hover:text-yellow-600"
                         >
                           Admin Panel
@@ -279,6 +291,15 @@ export default function Navbar({ userData }) {
               <div className="border-t border-gray-600 mt-3 pt-3">
                 <p className="font-semibold text-white">{userData.name}</p>
                 <p className="text-sm text-gray-300 mb-2">{userData.email}</p>
+                {userData?.role === "admin" && (
+                    
+                    <Link
+                  to="/admin"
+                  className=" py-1 text-sm w-full text-left  text-gold200 hover:text-white"
+                >
+                  📊 Dashboard
+                </Link>
+                  )}
                 <Link
                   to="/profile?tab=profile"
                   className="block py-1 text-sm hover:text-yellow-600"
@@ -307,21 +328,21 @@ export default function Navbar({ userData }) {
                   💬 Inbox
                 </Link>
                 {userData?.role === "admin" && (
-                      <>
-                        <Link
-                          to="/admin"
-                          className="block py-1 hover:text-yellow-600"
-                        >
-                          Admin Panel
-                        </Link>
-                        <Link
-                          to="/distribute-bonus"
-                          className="block py-1 hover:text-yellow-600"
-                        >
-                          Distribute Bonuses
-                        </Link>
-                      </>
-                    )}
+                  <>
+                    <Link
+                      to="/admin/users"
+                      className="block py-1 hover:text-yellow-600"
+                    >
+                      Admin Panel
+                    </Link>
+                    <Link
+                      to="/distribute-bonus"
+                      className="block py-1 hover:text-yellow-600"
+                    >
+                      Distribute Bonuses
+                    </Link>
+                  </>
+                )}
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"

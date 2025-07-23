@@ -9,7 +9,7 @@ import Signin from "./component/common/signIn";
 import Home from "./component/common/Home";
 import Signup from "./component/common/signUp";
 import Profile from "./component/Others/profile";
-import AdminDashboard from "./component/Admin/AdminDashboard";
+import AdminUserManager from "./component/Admin/AdminUserManager";
 import RequireAdmin from "./component/Others/RequireAdmin";
 import ManageUser from "./component/Admin/user/uid";
 import StartWithNothing from "./component/Others/StartWithNothing";
@@ -29,6 +29,8 @@ import { db } from "./firebase";
 import { ref, get } from "firebase/database";
 import LiveChatBox from "./component/common/LiveChatBox";
 import { UserContext } from "./component/Others/UserContext";
+import MainAdminDashboard from "./component/Admin/MainAdminDashboard";
+import { AdminTabProvider } from "./component/context/AdminTabContext";
 
 function App() {
   const { userData, setUserData } = useContext(UserContext);
@@ -44,7 +46,7 @@ function App() {
   }
 
   
-
+ 
   const router = createBrowserRouter([
     {
       path: "/",
@@ -55,11 +57,11 @@ function App() {
       ),
     },
     {
-      path: "/admin",
+      path: "/admin/users",
       element: (
         <RequireAdmin>
           <WithNavbar>
-            <AdminDashboard />
+            <AdminUserManager />
           </WithNavbar>
         </RequireAdmin>
       ),
@@ -70,6 +72,16 @@ function App() {
         <RequireAdmin>
           <WithNavbar>
             <ManageUser />
+          </WithNavbar>
+        </RequireAdmin>
+      ),
+    },
+    {
+      path: "/admin",
+      element: (
+        <RequireAdmin>
+          <WithNavbar>
+              <MainAdminDashboard />
           </WithNavbar>
         </RequireAdmin>
       ),

@@ -66,6 +66,7 @@ export default function LiveChatBox() {
       from: "user",
       content: input,
       timestamp: Date.now(),
+      read: false,
     });
     setInput("");
   };

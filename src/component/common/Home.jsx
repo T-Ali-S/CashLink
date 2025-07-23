@@ -11,6 +11,7 @@ import { MdLoop } from "react-icons/md";
 import { applyDailyROI } from "../utils/roiManager";
 import { processROIandUnlock } from "../utils/milestoneManager";
 import useMilestoneStatus from "../Others/hooks/useMilestoneStatus";
+import { getLiveTrackerTotal } from "../utils/liveTrackerUtils";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
@@ -76,10 +77,8 @@ export default function Home() {
 
   useEffect(() => {
     const fetchLiveTotal = async () => {
-      const snap = await get(ref(db, "liveTracker/total"));
-      if (snap.exists()) {
-        setLiveTotal(snap.val());
-      }
+      const total = await getLiveTrackerTotal();
+      setLiveTotal(total);
     };
     fetchLiveTotal();
   }, []);

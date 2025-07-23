@@ -8,6 +8,7 @@ import Alert from "./Alert";
 import { useSearchParams } from "react-router-dom";
 import { sendNotification } from "../utils/sendNotification";
 import { UserContext } from "../Others/UserContext";
+import { updateProfile } from "firebase/auth";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -30,7 +31,7 @@ export default function Signup() {
     "/avatars/avatar6.png",
     "/avatars/avatar7.png",
   ];
-   const randomAvatar =
+  const randomAvatar =
     availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 
   const [alert, setAlert] = useState({
@@ -38,7 +39,7 @@ export default function Signup() {
     message: "",
     type: "success",
   });
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -85,6 +86,12 @@ export default function Signup() {
       );
       const user = userCredential.user;
       const uid = user.uid;
+
+      // ✅ Update Firebase Auth profile
+      await updateProfile(user, {
+        displayName: name,
+        photoURL: randomAvatar,
+      });
 
       // 💾 Save to Realtime Database
       set(ref(db, `users/${uid}`), {
@@ -152,17 +159,16 @@ export default function Signup() {
   };
 
   const handleSignUp = async () => {
-  setLoading(true);
-  try {
-    // your signup logic here
-  } catch (error) {
-    console.error(error);
-    // show error to user
-  } finally {
-    setLoading(false);
-  }
-};
-
+    setLoading(true);
+    try {
+      // your signup logic here
+    } catch (error) {
+      console.error(error);
+      // show error to user
+    } finally {
+      setLoading(false);
+    }
+  };
 
   //autofill refer code
   useEffect(() => {

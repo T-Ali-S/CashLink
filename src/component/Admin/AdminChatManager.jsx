@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { db } from "../../firebase";
 import { ref, onValue, push, get, update } from "firebase/database";
 import { IoMdSend } from "react-icons/io";
+import { useChat } from "../context/ChatContext";
 
 export default function AdminChatManager() {
   const [chats, setChats] = useState({});
@@ -10,6 +11,7 @@ export default function AdminChatManager() {
   const [usernames, setUsernames] = useState({});
   const [view, setView] = useState("list");
   const bottomRef = useRef(null);
+  const { setUnreadCount } = useChat();
 
 
   // Load chats
@@ -88,6 +90,27 @@ export default function AdminChatManager() {
   useEffect(() => {
   bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 }, [chats[selectedUser]]);
+
+useEffect(() => {
+  return onValue(ref(db, "chats"), (snap) => {
+    if (snap.exists()) {
+      const chatData = snap.val();
+      setChats(chatData);
+
+      let unread = 0;
+      Object.values(chatData).forEach((chatList) => {
+        Object.values(chatList).forEach((msg) => {
+          if (msg.from === "user" && msg.read === false) {
+            unread++;
+          }
+        });
+      });
+
+      console.log("📨 Unread from AdminChatManager:", unread);
+      setUnreadCount(unread);
+    }
+  });
+}, []);
 
 
   return (

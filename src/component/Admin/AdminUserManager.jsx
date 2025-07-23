@@ -7,9 +7,10 @@ import TestMilestonePanel from "./test/TestMilestonePanel";
 import AdminChatManager from "./AdminChatManager";
 import SystemMessageEditor from "./SystemMessageEditor";
 import DistributeBonus from "./DistributeBonus";
+import { useAdminTab } from "../context/AdminTabContext";
 
-export default function AdminDashboard() {
-  const [tab, setTab] = useState("main");
+export default function AdminUserManager() {
+  const { tab, setTab } = useAdminTab(); // ✅ Correct and matches your context implementation
   const [query, setQuery] = useState("");
   const [userResults, setUserResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
 
   return (
     
-      <div className="min-h-screen p-6 max-w-6xl mx-auto">
+      <div className="min-h-screen p-6 max-w-6xl mx-auto mt-20">
         <h1 className="text-center text-4xl sm:text-5xl font-bold text-gold200 mb-10">
           Admin Dashboard
         </h1>
