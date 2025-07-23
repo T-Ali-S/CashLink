@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { ref, set, get } from "firebase/database";
 import Alert from "./Alert";
 import { useSearchParams } from "react-router-dom";
 import { sendNotification } from "../utils/sendNotification";
+import { UserContext } from "../Others/UserContext";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -15,6 +16,10 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [enteredCode, setEnteredCode] = useState("");
   const [searchParams] = useSearchParams();
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const { setUserData } = useContext(UserContext);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const availableAvatars = [
     "/avatars/default.png",
     "/avatars/avatar1.png",
@@ -25,7 +30,7 @@ export default function Signup() {
     "/avatars/avatar6.png",
     "/avatars/avatar7.png",
   ];
-  const randomAvatar =
+   const randomAvatar =
     availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 
   const [alert, setAlert] = useState({
@@ -33,16 +38,20 @@ export default function Signup() {
     message: "",
     type: "success",
   });
-  const navigate = useNavigate();
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // 🛡 Password validation
     const passwordRegex = /^(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]).{7,}$/;
     if (!passwordRegex.test(password)) {
-      alert(
-        "Password must be at least 7 characters long and contain at least one special character."
-      );
+      setAlert({
+        visible: true,
+        type: "error",
+        message:
+          "Password must be at least 7 characters and include one special character.",
+      });
+
       return;
     }
 
@@ -109,6 +118,14 @@ export default function Signup() {
         );
       }
 
+      setUserData({
+        name,
+        email,
+        avatarUrl: randomAvatar,
+        role: "user",
+        uid,
+      });
+
       // alert("User registered successfully!");
       setTimeout(() => navigate("/"), 2000);
     } catch (err) {
@@ -133,6 +150,19 @@ export default function Signup() {
     const suffix = Math.floor(1000 + Math.random() * 9000);
     return `${prefix}${suffix}`;
   };
+
+  const handleSignUp = async () => {
+  setLoading(true);
+  try {
+    // your signup logic here
+  } catch (error) {
+    console.error(error);
+    // show error to user
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   //autofill refer code
   useEffect(() => {
@@ -174,6 +204,7 @@ export default function Signup() {
 
           <input
             className="pl-3 pt-2 pb-2 text-black rounded-md border-2"
+            onFocus={() => setPasswordTouched(true)}
             onChange={(e) => setPassword(e.target.value)}
             value={password}
             type={showPassword ? "text" : "password"}
@@ -181,6 +212,13 @@ export default function Signup() {
             placeholder="Enter Password"
             required
           />
+          {passwordTouched && (
+            <p className="text-sm  text-red-500">
+              Password must be at least 7 characters and include one special
+              character.
+            </p>
+          )}
+
           <input
             className="pl-3 pt-2 pb-2 text-black rounded-md border-2"
             value={enteredCode}
@@ -195,8 +233,16 @@ export default function Signup() {
           >
             {showPassword ? "Hide" : "Show"}
           </button>
-          <button className="bg-blue-500 text-lg py-2 text-white hover:bg-blue-400 active:scale-95 transition-transform rounded-lg ">
-            Submit
+          <button
+            onClick={handleSignUp}
+            disabled={loading}
+            className={`px-4 py-2 rounded text-white ${
+              loading
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-gold200 hover:bg-yellow-400"
+            }`}
+          >
+            {loading ? "Signing up..." : "Sign Up"}
           </button>
         </form>
         <div className="text-xs mt-5 mb-5 flex justify-center items-center flex-wrap gap-1">

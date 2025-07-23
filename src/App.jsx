@@ -27,9 +27,12 @@ import Alert from "./component/common/Alert";
 import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
 import { ref, get } from "firebase/database";
+import LiveChatBox from "./component/common/LiveChatBox";
+import { UserContext } from "./component/Others/UserContext";
 
 function App() {
-  const [userData, setUserData] = useState(null);
+  const { userData, setUserData } = useContext(UserContext);
+
 
   function WithNavbar({ children }) {
     return (
@@ -40,25 +43,7 @@ function App() {
     );
   }
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const snap = await get(ref(db, `users/${user.uid}`));
-        if (snap.exists()) {
-          const data = snap.val();
-          setUserData({
-            ...data,
-            uid: user.uid,
-            role: data.role || "user",
-          });
-        }
-      } else {
-        setUserData(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+  
 
   const router = createBrowserRouter([
     {
@@ -99,9 +84,9 @@ function App() {
           <Signin />
           </WithNavbar> */}
           {userData === null ? (
-             <WithNavbar>
+            <WithNavbar>
               <Signin />
-          </WithNavbar> 
+            </WithNavbar>
           ) : userData.role === "admin" ? (
             <RequireAdmin>
               <Navigate to="/admin" />
@@ -125,9 +110,9 @@ function App() {
           </WithNavbar> */}
 
           {userData === null ? (
-             <WithNavbar>
+            <WithNavbar>
               <Signup />
-          </WithNavbar> 
+            </WithNavbar>
           ) : userData.role === "admin" ? (
             <RequireAdmin>
               <Navigate to="/admin" />
@@ -206,7 +191,6 @@ function App() {
             <RequireAdmin>
               <TransactionAdminView />
             </RequireAdmin>
-            
           </WithNavbar>
         </>
       ),
@@ -221,6 +205,14 @@ function App() {
             </RequireAdmin>
           </WithNavbar>
         </>
+      ),
+    },
+    {
+      path: "/chat",
+      element: (
+        <WithNavbar>
+          <LiveChatBox />
+        </WithNavbar>
       ),
     },
   ]);

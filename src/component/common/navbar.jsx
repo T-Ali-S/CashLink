@@ -6,6 +6,7 @@ import { ref, get } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useContext } from "react";
 import { UserContext } from "../Others/UserContext";
+import { AlertContext } from "../context/AlertContext";
 
 export default function Navbar({ userData }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,10 +16,25 @@ export default function Navbar({ userData }) {
   const menuToggleRef = useRef();
   const mobileMenuRef = useRef();
   const avatarToggleRef = useRef();
+  const { setAlert } = useContext(AlertContext);
+  
 
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/Signin");
+  };
+
+  const handleContactClick = () => {
+    if (userData) {
+      navigate("/chat");
+    } else {
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "Sign in to contact us",
+      });
+      // navigate("/signup");
+    }
   };
 
   useEffect(() => {
@@ -124,9 +140,9 @@ export default function Navbar({ userData }) {
             Plan
           </Link>
 
-          <Link to="/contact?mode=contact" className="hover:text-gold200">
+          <button onClick={handleContactClick} className="hover:text-gold200">
             Contact
-          </Link>
+          </button>
         </div>
 
         <div className="hidden md:flex justify-end flex-1 items-center gap-2">
@@ -177,26 +193,30 @@ export default function Navbar({ userData }) {
 
                   <div className="flex flex-col px-4 py-2 text-sm">
                     <Link to="/profile" className="py-2 hover:text-yellow-600">
-                      Profile
+                      👤 Profile
                     </Link>
                     <Link
                       to="/profile?tab=notifications"
                       className="py-2 hover:text-yellow-600 "
                     >
-                      Notification
+                      🔔 Notification
                     </Link>
                     <Link
                       to="/profile?tab=referrals"
                       className="py-2 hover:text-yellow-600 "
                     >
-                      Referrals
+                      🤝 Referrals
                     </Link>
                     <Link
                       to="/profile?tab=transaction"
                       className="py-2 hover:text-yellow-600 "
                     >
-                      Transaction Logs
+                      📄 Transaction Logs
                     </Link>
+                    <Link to="/chat" className="py-2 hover:text-yellow-600 ">
+                      💬 Inbox
+                    </Link>
+
                     {userData?.role === "admin" && (
                       <>
                         <Link
@@ -247,9 +267,12 @@ export default function Navbar({ userData }) {
           <Link to="/#packages" className="hover:text-gray-300">
             Plan
           </Link>
-          <Link to="/contact?mode=contact" className="hover:text-gray-300">
+          <button
+            onClick={handleContactClick}
+            className="hover:text-gray-300 text-left"
+          >
             Contact
-          </Link>
+          </button>
 
           {userData ? (
             <>
@@ -260,26 +283,45 @@ export default function Navbar({ userData }) {
                   to="/profile?tab=profile"
                   className="block py-1 text-sm hover:text-yellow-600"
                 >
-                  Profile
+                  👤 Profile
                 </Link>
                 <Link
                   to="/profile?tab=notifications"
                   className="block py-1 text-sm hover:text-yellow-600"
                 >
-                  Notifications
+                  🔔 Notifications
                 </Link>
                 <Link
                   to="/profile?tab=referrals"
                   className="block py-1 hover:text-yellow-600 "
                 >
-                  Referrals
+                  🤝 Referrals
                 </Link>
                 <Link
                   to="/profile?tab=transactions"
-                  className="py-2 hover:text-yellow-600 "
+                  className="block py-1 hover:text-yellow-600 "
                 >
-                  Transaction Logs
+                  📄 Transaction Logs
                 </Link>
+                <Link to="/chat" className="block py-1 hover:text-yellow-600 ">
+                  💬 Inbox
+                </Link>
+                {userData?.role === "admin" && (
+                      <>
+                        <Link
+                          to="/admin"
+                          className="block py-1 hover:text-yellow-600"
+                        >
+                          Admin Panel
+                        </Link>
+                        <Link
+                          to="/distribute-bonus"
+                          className="block py-1 hover:text-yellow-600"
+                        >
+                          Distribute Bonuses
+                        </Link>
+                      </>
+                    )}
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"

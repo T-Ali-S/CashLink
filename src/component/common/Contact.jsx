@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { auth, db } from "../../firebase";
 import { ref, push, get } from "firebase/database";
 import { IoIosArrowBack } from "react-icons/io";
-import { useNavigate, useLocation } from "react-router-dom";
+import { AlertContext } from "../context/AlertContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -12,10 +13,10 @@ export default function Contact() {
     message: "",
   });
   const [loading, setLoading] = useState(true);
+  const { setAlert } = useContext(AlertContext);
   const navigate = useNavigate();
-  const whatsappNumber = "923171314376"; // Replace with your number (no +)
-  const location = useLocation();
-  const mode = new URLSearchParams(location.search).get("mode") || "contact";
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState("");
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -44,8 +45,12 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.email || !form.username) {
-      alert("Please provide both name and email.");
+    if (!form.email || !form.username || !form.selectedPackage) {
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "Please provide both name and email.",
+      });
       return;
     }
 
@@ -58,16 +63,12 @@ export default function Contact() {
       await push(ref(db, "contacts"), entry);
 
       const message = `📩 Contact Form Submission:
-Name: ${form.username}
-Email: ${form.email}
-Selected Package: ${form.selectedPackage || "N/A"}
-Message: ${form.message || "N/A"}`;
+        Name: ${form.username}
+        Email: ${form.email}
+        Selected Package: ${form.selectedPackage || "N/A"}
+        Message: ${form.message || "N/A"}`;
 
-      const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        message
-      )}`;
-
-      window.open(whatsappLink, "_blank");
+      setShowPaymentOptions(true);
 
       setForm({
         email: form.email,
@@ -81,6 +82,57 @@ Message: ${form.message || "N/A"}`;
     }
   };
 
+  const handleMethodSelect = async (method) => {
+    setSelectedMethod(method);
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const welcomeSnap = await get(ref(db, "settings/chatWelcomeMessage"));
+    const allMessages = welcomeSnap.exists() ? welcomeSnap.val() : {};
+    const welcomeMsg =
+      allMessages[method] || `Welcome! You selected ${method}.`;
+
+    // Send system message
+    await push(ref(db, `chats/${user.uid}`), {
+      from: "system",
+      method,
+      content: welcomeMsg,
+      timestamp: Date.now(),
+    });
+
+    // Send user form data to admin
+    const infoMsg = `
+📦 New Package Activation Request
+
+👤 Name: ${form.username}
+📧 Email: ${form.email}
+💼 Package: ${form.selectedPackage}
+💳 Payment Method: ${method}
+📝 Message: ${form.message || "—"}
+`.trim();
+
+    await push(ref(db, `chats/${user.uid}`), {
+      from: "user",
+      content: infoMsg,
+      adminOnly: true,
+      timestamp: Date.now(),
+    });
+
+    navigate(`/chat?method=${method}`);
+  };
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        username: user.displayName || "",
+        email: user.email || "",
+      }));
+    }
+  }, []);
+
   if (loading)
     return <p className="text-white text-center mt-20">Loading...</p>;
 
@@ -93,9 +145,8 @@ Message: ${form.message || "N/A"}`;
         >
           <IoIosArrowBack />
         </button>
-        <span className="text-2xl sm:text-3xl font-bold   text-gold200">
-          {" "}
-          {mode === "package" ? "Buy Package" : "Contact Us"}
+        <span className="text-2xl sm:text-3xl font-bold text-gold200">
+          Buy Package
         </span>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-6">
@@ -109,6 +160,7 @@ Message: ${form.message || "N/A"}`;
               className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
               value={form.email}
               onChange={handleChange}
+              readOnly
               required
             />
           </div>
@@ -123,53 +175,75 @@ Message: ${form.message || "N/A"}`;
               className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
               value={form.username}
               onChange={handleChange}
+              readOnly
               required
             />
           </div>
 
           {/* Package Dropdown */}
-          {mode !== "contact" && (
-            <div>
-              <label className="block mb-1 text-sm">Select Package</label>
-              <select
-                name="selectedPackage"
-                className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
-                value={form.selectedPackage}
-                onChange={handleChange}
-              >
-                <option value="">-- Optional: Select Package --</option>
-                <option value="bronze">Bronze</option>
-                <option value="silver">Silver</option>
-                <option value="gold">Gold</option>
-                <option value="platinum">Platinum</option>
-                <option value="elite">Elite</option>
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block mb-1 text-sm">Select Package</label>
+            <select
+              value={form.selectedPackage || ""}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  selectedPackage: e.target.value,
+                }))
+              }
+              className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
+              required
+            >
+              <option value="" disabled>
+                Select Package
+              </option>
+              <option value="Bronze">Bronze</option>
+              <option value="Silver">Silver</option>
+              <option value="Gold">Gold</option>
+              <option value="Platinum">Platinum</option>
+              <option value="Elite">Elite</option>
+            </select>
+          </div>
 
-          {/* Message */}
-          {mode !== "package" && (
-            <div>
-              <label className="block mb-1 text-sm">Message (Optional)</label>
-              <textarea
-                name="message"
-                rows={4}
-                placeholder="Your message..."
-                className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
-                value={form.message}
-                onChange={handleChange}
-              ></textarea>
-            </div>
-          )}
+          {/* Message Field */}
+          <div>
+            <label className="block mb-1 text-sm">Message (Optional)</label>
+            <textarea
+              name="message"
+              rows={4}
+              placeholder="Your message..."
+              className="w-full p-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-gold100"
+              value={form.message}
+              onChange={handleChange}
+            ></textarea>
+          </div>
 
           {/* Submit Button */}
           <button
             type="submit"
             className=" w-full bg-gold200 hover:bg-yellow-500 p-3 rounded-lg font-bold text-white transition-transform transform hover:scale-105"
           >
-            Submit & Contact on WhatsApp
+            Submit
           </button>
         </form>
+        {showPaymentOptions && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-yellow-400 mb-3">
+              Choose a Payment Method:
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {["Easypaisa", "JazzCash", "BankTransfer"].map((method) => (
+                <div
+                  key={method}
+                  onClick={() => handleMethodSelect(method)}
+                  className="bg-gray-800 hover:bg-gray-700 text-white rounded-lg p-4 cursor-pointer text-center shadow-md"
+                >
+                  {method}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

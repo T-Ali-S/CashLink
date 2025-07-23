@@ -36,9 +36,7 @@ export async function processROIandUnlock(uid) {
 export async function expireMilestoneIfOverdue(uid) {
   const userRef = ref(db, `users/${uid}`);
   const snapshot = await get(userRef);
-  const lockedROI = milestone.lockedROI || 0;
-  const bonusLocked = user.milestones?.[pkg]?.lockedBonus || 0;
-  const totalUnlock = lockedROI + bonusLocked;
+
   if (!snapshot.exists()) return false;
 
   const user = snapshot.val();
@@ -53,6 +51,9 @@ export async function expireMilestoneIfOverdue(uid) {
 
   if (expired && milestone.earned < milestone.goal) {
     // 👎 Milestone failed — clean up locked rewards
+    const lockedROI = milestone.lockedROI || 0;
+    const bonusLocked = user.milestones?.[pkg]?.lockedBonus || 0;
+    const totalUnlock = lockedROI + bonusLocked;
     const safeBalance = user.balance || 0;
 
     const updatePayload = {
@@ -68,11 +69,11 @@ export async function expireMilestoneIfOverdue(uid) {
       updatePayload.eliteLocked = false;
     }
 
-    console.log("🎁 Unlocking rewards:", {
-      lockedROI: updatedLockedROI,
-      lockedBonus: updatedBonusLocked,
-      balanceBefore: updatedUser.balance,
-      withdrawableBefore: updatedUser.withdrawable,
+    console.log("🎁 Unlocking rewards on expiry:", {
+      lockedROI,
+      bonusLocked,
+      balanceBefore: user.balance,
+      withdrawableBefore: user.withdrawable,
       updatePayload,
     });
     await update(userRef, updatePayload);
@@ -181,6 +182,13 @@ export async function checkAndUnlockMilestone(uid) {
       );
     }
     console.log("🎯 Final milestone unlock payload for", uid, updatePayload);
+    console.log("🎁 Unlocking rewards:", {
+      lockedROI: updatedLockedROI,
+      lockedBonus: updatedBonusLocked,
+      balanceBefore: updatedUser.balance,
+      withdrawableBefore: updatedUser.withdrawable,
+      updatePayload,
+    });
     await update(userRef, updatePayload);
 
     return true;
