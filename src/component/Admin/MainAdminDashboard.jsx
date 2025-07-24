@@ -45,37 +45,36 @@ export default function MainAdminDashboard() {
     );
   }
   ///////////Tracking active pacakge
-  
-  useEffect(() => {
-  const fetchPackageCounts = async () => {
-    const snapshot = await get(ref(db, "users"));
-    if (!snapshot.exists()) return;
 
-    const data = snapshot.val();
-    const counts = {
-      bronze: 0,
-      silver: 0,
-      gold: 0,
-      platinum: 0,
-      elite: 0,
+  useEffect(() => {
+    const fetchPackageCounts = async () => {
+      const snapshot = await get(ref(db, "users"));
+      if (!snapshot.exists()) return;
+
+      const data = snapshot.val();
+      const counts = {
+        bronze: 0,
+        silver: 0,
+        gold: 0,
+        platinum: 0,
+        elite: 0,
+      };
+
+      for (const uid in data) {
+        const user = data[uid];
+        const pkg = user?.package?.toLowerCase(); // safely handle undefined
+        console.log(`🧾 User ${uid} has package: ${pkg}`);
+        if (pkg && counts.hasOwnProperty(pkg)) {
+          counts[pkg]++;
+        }
+      }
+
+      console.log("📊 Count result:", counts);
+      setUserCounts(counts); // <-- this is the correct function
     };
 
-    for (const uid in data) {
-      const user = data[uid];
-      const pkg = user?.package?.toLowerCase(); // safely handle undefined
-      console.log(`🧾 User ${uid} has package: ${pkg}`);
-      if (pkg && counts.hasOwnProperty(pkg)) {
-        counts[pkg]++;
-      }
-    }
-
-    console.log("📊 Count result:", counts);
-    setUserCounts(counts); // <-- this is the correct function
-  };
-
-  fetchPackageCounts();
-}, []);
-
+    fetchPackageCounts();
+  }, []);
 
   //////////////withdraw card
   useEffect(() => {
@@ -219,9 +218,18 @@ export default function MainAdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto ">
+        <div className="relative mb-10 w-full max-w-[90%] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[768px] p-[2px] rounded-xl bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] shadow-lg mx-auto">
+          <div className="rounded-xl bg-[#192846] p-4 sm:p-6 md:p-8 text-white text-center">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent">
+              AdminDashboard
+            </h2>
+          </div>
+        </div>
+
+        {/* <div className="text-white font-bold text text-4xl">Admin Dashboard</div><br/> */}
         {/* Top Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-gray-800 p-6 rounded-xl text-white">
+        {/* <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-gray-800 p-6 rounded-xl text-white">
           <div className="flex items-center gap-4">
             <img
               src={adminUser?.photoURL || "/avatars/admin.png"}
@@ -236,6 +244,49 @@ export default function MainAdminDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
+            <Card
+              title="Activate a Package"
+              value="➡"
+              onClick={() => {
+                setTab("main");
+                navigate("/admin/users");
+              }}
+            />
+            <Card title="Active Users" value={activeUsers} />
+            <Card
+              value="💬"
+              title="Chat"
+              onClick={() => {
+                setTab("chat");
+                navigate("/admin/users");
+              }}
+            />
+            <Card title="Live Tracker" value={`Rs. ${liveTrackerAmount}`} />
+          </div>
+        </div> */}
+        <div className="flex flex-col gap-6 bg-gray-800 p-4 sm:p-6 md:p-8 rounded-xl text-white w-full">
+          {/* Admin Header Section */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            {/* Profile */}
+            <div className="flex items-center gap-4">
+              <img
+                src={adminUser?.photoURL || "/avatars/admin.png"}
+                alt="Admin"
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border"
+              />
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold">
+                  {adminUser?.displayName || "Admin User"}
+                </h2>
+                <p className="text-gray-300 text-sm sm:text-base">
+                  {adminUser?.email}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
             <Card
               title="Activate a Package"
               value="➡"

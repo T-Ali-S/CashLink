@@ -41,7 +41,47 @@ export default function Contact() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+  /////Previous handleSubmit
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
 
+  //   if (!form.email || !form.username || !form.selectedPackage) {
+  //     setAlert({
+  //       visible: true,
+  //       type: "error",
+  //       message: "Please provide both name and email.",
+  //     });
+  //     return;
+  //   }
+
+  //   const entry = {
+  //     ...form,
+  //     submittedAt: Date.now(),
+  //   };
+
+  //   try {
+  //     await push(ref(db, "contacts"), entry);
+
+  //     const message = `📩 Contact Form Submission:
+  //       Name: ${form.username}
+  //       Email: ${form.email}
+  //       Selected Package: ${form.selectedPackage || "N/A"}
+  //       Message: ${form.message || "N/A"}`;
+
+  //     setShowPaymentOptions(true);
+
+  //     setForm({
+  //       email: form.email,
+  //       username: form.username,
+  //       selectedPackage: "",
+  //       message: "",
+  //     });
+  //   } catch (err) {
+  //     console.error("❌ Submission error:", err);
+  //     alert("There was an error. Please try again.");
+  //   }
+  // };
+  ///////Updated handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,7 +89,7 @@ export default function Contact() {
       setAlert({
         visible: true,
         type: "error",
-        message: "Please provide both name and email.",
+        message: "Please provide name, email, and select a package.",
       });
       return;
     }
@@ -60,28 +100,85 @@ export default function Contact() {
     };
 
     try {
+      // Store form data in contacts DB
       await push(ref(db, "contacts"), entry);
 
-      const message = `📩 Contact Form Submission:
-        Name: ${form.username}
-        Email: ${form.email}
-        Selected Package: ${form.selectedPackage || "N/A"}
-        Message: ${form.message || "N/A"}`;
+      // Send main chat message with package info
+      const chatEntry = {
+        from: "user",
+        content: `
+📦 New Package Activation Request
 
+👤 Name: ${form.username}
+📧 Email: ${form.email}
+💼 Package: ${form.selectedPackage}
+📝 Message: ${form.message || "—"}
+`.trim(),
+        adminOnly: true,
+        timestamp: Date.now(),
+      };
+
+      await push(ref(db, `chats/${auth.currentUser.uid}`), chatEntry);
+
+      // Show payment options after chat is sent
       setShowPaymentOptions(true);
 
-      setForm({
-        email: form.email,
-        username: form.username,
+      // Reset only message and selectedPackage
+      setForm((prev) => ({
+        ...prev,
         selectedPackage: "",
         message: "",
-      });
+      }));
     } catch (err) {
       console.error("❌ Submission error:", err);
-      alert("There was an error. Please try again.");
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "There was an error submitting the form.",
+      });
     }
   };
+  ///////////Previous handleMethodSelect
+  //   const handleMethodSelect = async (method) => {
+  //     setSelectedMethod(method);
 
+  //     const user = auth.currentUser;
+  //     if (!user) return;
+
+  //     const welcomeSnap = await get(ref(db, "settings/chatWelcomeMessage"));
+  //     const allMessages = welcomeSnap.exists() ? welcomeSnap.val() : {};
+  //     const welcomeMsg =
+  //       allMessages[method] || `Welcome! You selected ${method}.`;
+
+  //     // Send system message
+  //     await push(ref(db, `chats/${user.uid}`), {
+  //       from: "system",
+  //       method,
+  //       content: welcomeMsg,
+  //       timestamp: Date.now(),
+  //     });
+
+  //     // Send user form data to admin
+  //     const infoMsg = `
+  // 📦 New Package Activation Request
+
+  // 👤 Name: ${form.username}
+  // 📧 Email: ${form.email}
+  // 💼 Package: ${form.selectedPackage}
+  // 💳 Payment Method: ${method}
+  // 📝 Message: ${form.message || "—"}
+  // `.trim();
+
+  //     await push(ref(db, `chats/${user.uid}`), {
+  //       from: "user",
+  //       content: infoMsg,
+  //       adminOnly: true,
+  //       timestamp: Date.now(),
+  //     });
+
+  //     navigate(`/chat?method=${method}`);
+  //   };
+  ///////////updated handleMethodSelect
   const handleMethodSelect = async (method) => {
     setSelectedMethod(method);
 
@@ -93,7 +190,7 @@ export default function Contact() {
     const welcomeMsg =
       allMessages[method] || `Welcome! You selected ${method}.`;
 
-    // Send system message
+    // Send system message indicating selected method
     await push(ref(db, `chats/${user.uid}`), {
       from: "system",
       method,
@@ -101,24 +198,7 @@ export default function Contact() {
       timestamp: Date.now(),
     });
 
-    // Send user form data to admin
-    const infoMsg = `
-📦 New Package Activation Request
-
-👤 Name: ${form.username}
-📧 Email: ${form.email}
-💼 Package: ${form.selectedPackage}
-💳 Payment Method: ${method}
-📝 Message: ${form.message || "—"}
-`.trim();
-
-    await push(ref(db, `chats/${user.uid}`), {
-      from: "user",
-      content: infoMsg,
-      adminOnly: true,
-      timestamp: Date.now(),
-    });
-
+    // Navigate to chat view
     navigate(`/chat?method=${method}`);
   };
 
