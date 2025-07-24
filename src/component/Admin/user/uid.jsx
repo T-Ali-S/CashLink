@@ -175,6 +175,7 @@ export default function ManageUser() {
     // ✅ Update user record
     await update(ref(db, `users/${uid}`), {
       package: selected,
+      // package: selected.charAt(0).toUpperCase() + selected.slice(1),
       balance: newBalance,
       withdrawable: newWithdrawable,
       eliteDailyROI: eliteLocked ? dailyROI : null,

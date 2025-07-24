@@ -25,9 +25,9 @@ export default function MainAdminDashboard() {
   const [liveTrackerAmount, setLiveTrackerAmount] = useState(0);
   const [bonusTotal, setBonusTotal] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const { setTab } = useAdminTab();
   const { unreadCount } = useChat();
   const [adminUser, setAdminUser] = useState(null);
+  const { setTransactionFilter, setTab } = useAdminTab();
 
   function ChatCard() {
     const { setTab } = useAdminTab();
@@ -44,61 +44,64 @@ export default function MainAdminDashboard() {
       </div>
     );
   }
-
+  ///////////Tracking active pacakge
+  
   useEffect(() => {
-    const usersRef = ref(db, "users");
-    const unsub = onValue(usersRef, (snap) => {
+  const fetchPackageCounts = async () => {
+    const snapshot = await get(ref(db, "users"));
+    if (!snapshot.exists()) return;
+
+    const data = snapshot.val();
+    const counts = {
+      bronze: 0,
+      silver: 0,
+      gold: 0,
+      platinum: 0,
+      elite: 0,
+    };
+
+    for (const uid in data) {
+      const user = data[uid];
+      const pkg = user?.package?.toLowerCase(); // safely handle undefined
+      console.log(`🧾 User ${uid} has package: ${pkg}`);
+      if (pkg && counts.hasOwnProperty(pkg)) {
+        counts[pkg]++;
+      }
+    }
+
+    console.log("📊 Count result:", counts);
+    setUserCounts(counts); // <-- this is the correct function
+  };
+
+  fetchPackageCounts();
+}, []);
+
+
+  //////////////withdraw card
+  useEffect(() => {
+    const withdrawalRef = ref(db, "withdrawals");
+
+    onValue(withdrawalRef, (snap) => {
       if (!snap.exists()) return;
-      const users = snap.val();
+      let pending = 0;
+      let processing = 0;
+      let completed = 0;
 
-      let active = 0;
-      let bronze = 0,
-        silver = 0,
-        gold = 0,
-        platinum = 0,
-        elite = 0;
-      let bonusSum = 0;
-
-      Object.values(users).forEach((user) => {
-        if (user.package) {
-          active++;
-          if (user.package === "Bronze") bronze++;
-          if (user.package === "Silver") silver++;
-          if (user.package === "Gold") gold++;
-          if (user.package === "Platinum") platinum++;
-          if (user.package === "Elite") elite++;
+      const data = snap.val();
+      for (const userId in data) {
+        for (const txnId in data[userId]) {
+          const txn = data[userId][txnId];
+          if (txn.status === "Pending") pending++;
+          else if (txn.status === "Processing") processing++;
+          else if (txn.status === "Approved") completed++;
         }
-        bonusSum += user.bonusWithdrawable || 0;
-      });
-
-      setActiveUsers(active);
-      setUserCounts({ bronze, silver, gold, platinum, elite });
-      setBonusTotal(bonusSum);
-    });
-
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const txRef = ref(db, "transactions");
-    onValue(txRef, (snap) => {
-      if (!snap.exists()) return;
-      const allTx = Object.values(snap.val());
-
-      let pending = 0,
-        processing = 0,
-        completed = 0;
-      allTx.forEach((tx) => {
-        if (tx.status === "pending") pending++;
-        else if (tx.status === "processing") processing++;
-        else if (["approved", "complete", "active"].includes(tx.status))
-          completed++;
-      });
+      }
 
       setTransactions({ pending, processing, completed });
     });
   }, []);
 
+  ///////////LiveTracker Goal
   useEffect(() => {
     const trackerRef = ref(db, "liveTracker/total");
     onValue(trackerRef, (snap) => {
@@ -168,6 +171,52 @@ export default function MainAdminDashboard() {
     }
   }, []);
 
+  /////////Testing users Pacakges data from database
+
+  useEffect(() => {
+    const usersRef = ref(db, "users");
+    const unsub = onValue(usersRef, (snap) => {
+      if (!snap.exists()) return;
+      const users = snap.val();
+
+      let active = 0;
+      let bronze = 0,
+        silver = 0,
+        gold = 0,
+        platinum = 0,
+        elite = 0;
+      let bonusSum = 0;
+
+      Object.entries(users).forEach(([uid, user]) => {
+        console.log(`🧾 User ${uid} has package:`, user.package);
+
+        if (user.package) {
+          active++;
+          if (user.package === "Bronze") bronze++;
+          if (user.package === "Silver") silver++;
+          if (user.package === "Gold") gold++;
+          if (user.package === "Platinum") platinum++;
+          if (user.package === "Elite") elite++;
+        }
+        bonusSum += user.bonusWithdrawable || 0;
+      });
+
+      console.log("📊 Count result:", {
+        bronze,
+        silver,
+        gold,
+        platinum,
+        elite,
+      });
+
+      setActiveUsers(active);
+      setUserCounts({ bronze, silver, gold, platinum, elite });
+      setBonusTotal(bonusSum);
+    });
+
+    return () => unsub();
+  }, []);
+
   return (
     <AdminLayout>
       <div className="p-6 max-w-7xl mx-auto">
@@ -180,10 +229,10 @@ export default function MainAdminDashboard() {
               className="w-16 h-16 rounded-full border"
             />
             <div>
-              <h2 className="text-xl font-bold">
+              <h2 className="text-4xl font-bold">
                 {adminUser?.displayName || "Admin User"}
               </h2>
-              <p className="text-gray-300 text-sm">{adminUser?.email}</p>
+              <p className="text-gray-300 text-lg">{adminUser?.email}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
@@ -221,11 +270,7 @@ export default function MainAdminDashboard() {
             value={userCounts.silver}
             extra="Silver Package Users"
           />
-          <Card
-            title="GP"
-            value={userCounts.gold}
-            extra="Gold Package Users"
-          />
+          <Card title="GP" value={userCounts.gold} extra="Gold Package Users" />
           <Card
             title="PP"
             value={userCounts.platinum}
@@ -242,27 +287,38 @@ export default function MainAdminDashboard() {
             title="PT"
             value={transactions.pending}
             extra="Pending Transactions"
+            onClick={() => {
+              setTransactionFilter("Pending");
+              navigate("/admin/users");
+              setTab("withdrawals");
+            }}
           />
           <Card
             title="PT"
             value={transactions.processing}
             extra="Processing Transactions"
+            onClick={() => {
+              setTransactionFilter("Processing");
+              navigate("/admin/users");
+              setTab("withdrawals");
+            }}
           />
           <Card
             title="TC"
             value={transactions.completed}
             extra="Completed Transactions"
+            onClick={() => {
+              setTransactionFilter("Approved");
+              navigate("/admin/users");
+              setTab("withdrawals");
+            }}
           />
           <Card
             title="BA"
             value={`Rs. ${bonusTotal}`}
             extra="Total Bonuses Given"
           />
-          <Card
-            title="URM"
-            value={unreadCount}
-            extra="Unread User Messages"
-          />
+          <Card title="URM" value={unreadCount} extra="Unread User Messages" />
         </div>
       </div>
     </AdminLayout>

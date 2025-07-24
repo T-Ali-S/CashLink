@@ -8,6 +8,7 @@ import AdminChatManager from "./AdminChatManager";
 import SystemMessageEditor from "./SystemMessageEditor";
 import DistributeBonus from "./DistributeBonus";
 import { useAdminTab } from "../context/AdminTabContext";
+import AdminAllWithdrawals from "./AdminAllWithdrawals";
 
 export default function AdminUserManager() {
   const { tab, setTab } = useAdminTab(); // ✅ Correct and matches your context implementation
@@ -78,6 +79,16 @@ export default function AdminUserManager() {
               }`}
             >
               Distribute Bonuses
+            </button>
+            <button
+              onClick={() => setTab("withdrawals")}
+              className={`whitespace-nowrap px-4 py-2 rounded ${
+                tab === "withdrawals"
+                  ? "bg-yellow-400 text-black"
+                  : "bg-gray-700 text-white"
+              }`}
+            >
+              Withdrawal Requests
             </button>
             {/* Add more tabs here if needed */}
           </div>
@@ -150,6 +161,8 @@ export default function AdminUserManager() {
         {tab === "chat" && <AdminChatManager />}
         {tab === "welcome" && <SystemMessageEditor />}
         {tab === "bonuses" && <DistributeBonus />}
+        {tab === "withdrawals" && <AdminAllWithdrawals />}
+
       </div>
     
   );
