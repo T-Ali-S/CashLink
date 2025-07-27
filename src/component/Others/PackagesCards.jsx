@@ -11,89 +11,115 @@ export default function PackagesCards() {
     refer,
     total,
     daily,
-    special,
     icon,
     tier,
-    big,
     onClick,
   }) {
-    let borderStyles = "border-4 hover:animate-pulse";
-
+    let gradientWrapper = "";
     switch (tier.toLowerCase()) {
       case "bronze":
-        borderStyles += " border-[#8B4513]"; // SaddleBrown
+        gradientWrapper =
+          "bg-gradient-to-br from-[#8b5e3c] via-[#704828] to-[#4e2f1a]";
         break;
       case "silver":
-        borderStyles += " border-gray-400";
+        gradientWrapper =
+          "bg-gradient-to-br from-[#b0b0b0] via-[#999999] to-[#6e6e6e]";
         break;
       case "gold":
-        borderStyles += " border-yellow-400";
+        gradientWrapper =
+          "bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B]";
         break;
       case "platinum":
-        borderStyles += " border-teal-400";
+        gradientWrapper =
+          "bg-gradient-to-br from-[#d1f2ff] via-[#a2d2ff] to-[#5d9eff]";
+        // "bg-[linear-gradient(145deg,_#F0F0F0,_#C0C0C0)]";
         break;
       case "elite":
-        borderStyles =
-          "border-4 border-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-border";
+        gradientWrapper =
+          "bg-gradient-to-r from-[#00eaff] via-[#556bff] to-[#3500d3] shadow-[0_0_12px_rgba(0,238,255,0.4)]";
         break;
       default:
-        borderStyles += " border-gray-300";
+        gradientWrapper = "bg-gradient-to-br from-gray-500 to-gray-700";
     }
+
     return (
       <div
+        className={`p-[6px] sm:p-[8px] rounded-2xl ${gradientWrapper} hover:scale-[1.02] transition-transform cursor-pointer ${
+          tier.toLowerCase() !== "elite" ? "mb-10" : ""
+        }`}
         onClick={onClick}
-        className={`bg-white text-black rounded-lg shadow-md p-4 sm:p-6 transition-transform hover:scale-105 cursor-pointer ${borderStyles} $
-           ${""}
-        `}
       >
-        <div className="relative pt-16 sm:pt-20">
-          <div className="absolute -top-16 sm:-top-20 left-1/2 -translate-x-1/2">
-            <img
-              src={icon}
-              alt={`${tier} tier icon`}
-              className={`${
+        <div className="bg-transparent text-white rounded-[1rem] shadow-md px-3 py-4 sm:p-6 min-h-[280px] sm:min-h-[360px]">
+          <div className="relative pt-28 sm:pt-36">
+            <div className="absolute -top-16 sm:-top-24 left-1/2 -translate-x-1/2">
+              <img
+                src={icon}
+                alt={`${tier} tier icon`}
+                className={`${
+                  tier.toLowerCase() === "elite"
+                    ? "w-40 sm:w-48 md:w-60"
+                    : "w-24 sm:w-40 md:w-36"
+                } max-w-none h-auto object-contain drop-shadow-xl transition-transform duration-300 hover:-translate-y-1`}
+              />
+            </div>
+            <h3
+              className={`text-center font-bold -mt-20 ${
                 tier.toLowerCase() === "elite"
-                  ? "w-32 h-24 sm:w-60 sm:h-32"
-                  : "w-24 h-24 sm:w-44 sm:h-28"
-              } object-contain drop-shadow-xl transition-transform duration-300 hover:-translate-y-1`}
-            />
+                  ? "text-xl sm:text-2xl md:text-3xl"
+                  : "text-base sm:text-lg md:text-xl"
+              }`}
+            >
+              {tier} Tier
+            </h3>
           </div>
-          <h3 className="text-center text-lg font-semibold">{tier} Tier</h3>
+
+          <h4
+            className={`text-center font-semibold -mt-10 ${
+              tier.toLowerCase() === "elite"
+                ? "text-xl mb-2 sm:text-xl md:text-2xl"
+                : "text-base sm:text-lg md:text-xl"
+            }`}
+          >
+            Rs. {amount} Package
+          </h4>
+
+          {daily ? (
+            <>
+              <p className="text-center text-xl  sm:text-base">
+                Earn {daily}% – 3% daily, withdraw anytime
+              </p>
+              <p className="text-2xl  bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent sm:text-base md:text-4xl mt-2 text-center font-bold">
+                Most Popular {<br />}Package!
+              </p>
+            </>
+          ) : (
+            <div className="mt-2 overflow-y-auto max-h-28 sm:max-h-full pr-1 scrollbar-thin scrollbar-thumb-gray-500">
+              <p className="text-center text-sm sm:text-base">
+                1) Next day earns {nextDay}% return
+              </p>
+              <br />
+              <p className="text-center text-sm sm:text-base">
+                2) {refer} Referrals required for second withdrawal
+              </p>
+              <br />
+              <p className="text-center text-sm sm:text-base">
+                3) Total earning up to Rs. {total}
+              </p>
+            </div>
+          )}
         </div>
-
-        <h4 className="text-center text-2xl font-bold mb-2">
-          Rs. {amount} Package
-        </h4>
-
-        {daily ? (
-          <>
-            <p className="text-center">
-              Earn {daily}% - 3% daily, withdraw anytime
-            </p>
-            <p className="text-green-600 text-xl mt-2 text-center font-bold">
-              Most Popular Package!
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-center">Next day earns {nextDay}% return</p>
-            <p className="text-center">
-              {refer} Referrals required for second withdrawal
-            </p>
-            <p className="text-center">Total earning up to Rs. {total}</p>
-          </>
-        )}
       </div>
     );
   }
 
   return (
-    <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center mt-14">
-      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-36 text-center text-gold100">
+    <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center mt-14 mb-14">
+      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-20 text-center text-gold100">
         Our Investment Packages
       </h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl mb-6 space-y-8">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl mb-10">
+
         <PackageCard
           tier="Bronze"
           icon="/Medals/Bronze.png"
@@ -106,7 +132,6 @@ export default function PackagesCards() {
         <PackageCard
           tier="Silver"
           icon="/Medals/Silver.png"
-          // icon="🥈"
           amount={5000}
           nextDay={10}
           refer={3}
@@ -116,43 +141,35 @@ export default function PackagesCards() {
         <PackageCard
           tier="Gold"
           icon="/Medals/Gold.png"
-          // icon="🥇"
           amount={10000}
           nextDay={10}
           refer={2}
           total={"21000"}
           onClick={() => navigate("/contact?mode=package")}
         />
+        <PackageCard
+          tier="Platinum"
+          icon="/Medals/Platinum.png"
+          amount={50000}
+          nextDay={10}
+          refer={1}
+          total={"105000"}
+          onClick={() => navigate("/contact?mode=package")}
+        />
       </div>
 
-      <div className=" grid grid-cols-1 md:grid-cols-5 gap-6 w-full max-w-6xl mt-10">
-        <div className=" md:col-span-2 mb-5">
-          <PackageCard
-            tier="Platinum"
-            icon="/Medals/Platinum.png"
-            // icon="💎"
-            amount={50000}
-            nextDay={10}
-            refer={1}
-            total={"105000"}
-            onClick={() => navigate("/contact?mode=package")}
-          />
-        </div>
-        <div className="md:col-span-3">
-          <PackageCard
-            tier="Elite"
-            icon="/Medals/Elite.png"
-            // icon="👑"
-            amount={100000}
-            daily={5}
-            special
-            onClick={() => navigate("/contact?mode=package")}
-          />
-        </div>
+      <div className="w-full max-w-6xl">
+        <PackageCard
+          tier="Elite"
+          icon="/Medals/Elite.png"
+          amount={100000}
+          daily={5}
+          onClick={() => navigate("/contact?mode=package")}
+        />
       </div>
 
-      <div className="mt-12 w-full max-w-md">
-        <div
+      <div className="mt-12 w-full max-w-md text-center">
+        <button
           onClick={() => {
             const user = auth.currentUser;
             if (!user) {
@@ -161,14 +178,15 @@ export default function PackagesCards() {
               navigate("/start-with-nothing");
             }
           }}
-          className="bg-white text-black p-6 rounded-lg shadow-md text-center cursor-pointer hover:bg-gray-300 transition mb-16"
+          className="w-full max-w-[320px] px-6 py-4 bg-gradient-to-b from-[#FFD700] via-[#FFB800] to-[#C68600] 
+      rounded-2xl shadow-[inset_0_4px_8px_#fff,0_6px_12px_rgba(0,0,0,0.3)] 
+      text-yellow-100 font-extrabold text-2xl leading-tight tracking-wide 
+      border border-[#f6c400] hover:scale-105 active:scale-95 transition-all duration-300"
         >
-          <h3 className="text-2xl font-bold mb-2">Start With Nothing</h3>
-          <p className="text-sm">
-            Don’t want to invest yet? Earn by inviting others. Progress toward
-            free bonuses!
-          </p>
-        </div>
+          <div className="drop-shadow-[2px_2px_1px_rgba(0,0,0,0.6)]">
+            START WITH <br /> NOTHING
+          </div>
+        </button>
       </div>
     </section>
   );

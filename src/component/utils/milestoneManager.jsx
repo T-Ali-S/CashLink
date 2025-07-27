@@ -50,40 +50,120 @@ export async function expireMilestoneIfOverdue(uid) {
   const expired = milestone.deadline && now > milestone.deadline;
 
   if (expired && milestone.earned < milestone.goal) {
-    // 👎 Milestone failed — clean up locked rewards
     const lockedROI = milestone.lockedROI || 0;
-    const bonusLocked = user.milestones?.[pkg]?.lockedBonus || 0;
+    const bonusLocked = milestone.lockedBonus || 0;
     const totalUnlock = lockedROI + bonusLocked;
-    const safeBalance = user.balance || 0;
 
     const updatePayload = {
       withdrawable: (user.withdrawable || 0) + totalUnlock,
-      balance: (user.balance || 0) + totalUnlock, // ✅ ensures balance reflects the real total
+      balance: (user.balance || 0) + totalUnlock,
+      currentPackageROI: 0, // ✅ Reset ROI tracker
       [`milestones/${pkg}/lockedROI`]: 0,
       [`milestones/${pkg}/roiInjectedAtUnlock`]: false,
       [`milestones/${pkg}/lockedBonus`]: 0,
       [`milestones/${pkg}/rewarded`]: true,
     };
 
-    if (pkg === "elite") {
-      updatePayload.eliteLocked = false;
-    }
+    if (pkg === "elite") updatePayload.eliteLocked = false;
 
-    console.log("🎁 Unlocking rewards on expiry:", {
-      lockedROI,
-      bonusLocked,
-      balanceBefore: user.balance,
-      withdrawableBefore: user.withdrawable,
-      updatePayload,
-    });
     await update(userRef, updatePayload);
-
     console.log(`⛔ Milestone expired — cleared locked rewards for ${uid}`);
+    await update(userRef, { package: "" });
     return true;
   }
 
   return false;
 }
+
+const roiCap = {
+  bronze: 6300,
+  silver: 10500,
+  gold: 21000,
+  platinum: 105000,
+  elite: 150000,
+};
+
+// export async function checkAndUnlockMilestone(uid) {
+//   const userRef = ref(db, `users/${uid}`);
+//   const snapshot = await get(userRef);
+//   if (!snapshot.exists()) return false;
+
+//   const user = snapshot.val();
+//   const pkg = user.package;
+//   if (!pkg) return false;
+
+//   const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+//   const bonusValues = {
+//     silver: 1000,
+//     gold: 2000,
+//     platinum: 10000,
+//     elite: 20000,
+//   };
+//   const referralQuotas = {
+//     bronze: 5,
+//     silver: 3,
+//     gold: 2,
+//     platinum: 2,
+//     elite: 1,
+//   };
+
+//   const milestone = user.milestones?.[pkg] || {};
+//   const previouslyConsumed = user.usedPackageRefs || [];
+
+//   const allUsersSnap = await get(ref(db, "users"));
+//   const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+
+//   const referrals = Object.entries(allUsers)
+//     .filter(([refId, u]) => u.referredBy === uid && u.package)
+//     .map(([refId, u]) => ({ uid: refId, ...u }));
+
+//   const quota = referralQuotas[pkg];
+//   const userTierIdx = tierOrder.indexOf(pkg);
+//   let earned = 0;
+//   let lockedBonus = 0;
+//   const newRefsToConsume = [];
+
+//   for (let ref of referrals) {
+//     if (previouslyConsumed.includes(ref.uid)) continue;
+
+//     const refTierIdx = tierOrder.indexOf(ref.package);
+//     if (refTierIdx < userTierIdx) continue;
+
+//     earned++;
+//     newRefsToConsume.push(ref.uid);
+
+//     if (refTierIdx > userTierIdx) {
+//       lockedBonus += bonusValues[ref.package] || 0;
+//     }
+
+//     if (earned >= quota) break;
+//   }
+
+//   const milestoneAlreadyRewarded = milestone.rewarded;
+//   const isNewlyQualified = earned >= quota && !milestoneAlreadyRewarded;
+
+//   const needsPatch =
+//     milestoneAlreadyRewarded &&
+//     milestone.earned === 0 &&
+//     (milestone.lockedROI || 0) === 0 &&
+//     (milestone.lockedBonus || 0) === 0 &&
+//     earned >= quota;
+
+//   if (!isNewlyQualified && !needsPatch) {
+//     console.log(
+//       `📊 Milestone not ready or already valid for ${uid}, skipping.`
+//     );
+//     return false;
+//   }
+
+//   return await finalizeMilestoneUnlock(
+//     userRef,
+//     user,
+//     milestone,
+//     pkg,
+//     newRefsToConsume
+//   );
+// }
 
 export async function checkAndUnlockMilestone(uid) {
   const userRef = ref(db, `users/${uid}`);
@@ -94,31 +174,14 @@ export async function checkAndUnlockMilestone(uid) {
   const pkg = user.package;
   if (!pkg) return false;
 
-  const milestone = user.milestones?.[pkg];
-  if (!milestone || milestone.rewarded) return false;
-
-  const referralsEarned = milestone.earned || 0;
-  const referralsNeeded = milestone.goal || 0;
-
-  // ⏰ Optional: Check time limit
-  const now = Date.now();
-  const expired = milestone.deadline && now > milestone.deadline;
-  if (expired) {
-    console.log(`⏳ Milestone expired for ${uid} — cleaning up...`);
-    await update(userRef, {
-      balance: user.balance || 0,
-      lockedBonus: 0,
-      eliteLocked: pkg === "elite" ? true : undefined,
-      [`milestones/${pkg}/rewarded`]: false,
-      [`milestones/${pkg}/lockedBonus`]: 0,
-      [`milestones/${pkg}/lockedROI`]: 0,
-    });
-
-    return false;
-  }
-
-  // ✅ Milestone fulfilled
-  const requiredRefs = {
+  const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+  const bonusValues = {
+    silver: 1000,
+    gold: 2000,
+    platinum: 10000,
+    elite: 20000,
+  };
+  const referralQuotas = {
     bronze: 5,
     silver: 3,
     gold: 2,
@@ -126,73 +189,197 @@ export async function checkAndUnlockMilestone(uid) {
     elite: 1,
   };
 
-  const quota = requiredRefs[pkg];
-  const earned = milestone.earned || 0;
-  const lockedROI = milestone.lockedROI || 0;
-  const bonusLocked = user.milestones?.[pkg]?.lockedBonus || 0;
+  const milestone = user.milestones?.[pkg] || {};
+  const previouslyConsumed = user.usedPackageRefs || [];
 
-  if (earned >= quota) {
-    let roi = 0;
-    const lastROIAt = user.lastPayoutAt || 0;
-    const oneDay = 24 * 60 * 60 * 1000;
+  const allUsersSnap = await get(ref(db, "users"));
+  const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
 
-    const roiInjectedFlag =
-      user.milestones?.[pkg]?.roiInjectedAtUnlock || false;
+  const referrals = Object.entries(allUsers)
+    .filter(([refId, u]) => u.referredBy === uid && u.package)
+    .map(([refId, u]) => ({ uid: refId, ...u }));
 
-    if (!roiInjectedFlag && now - lastROIAt >= oneDay) {
-      roi = await applyDailyROI(uid);
-      console.log(`🧮 ROI injected before unlock for ${uid}: Rs. ${roi}`);
+  const quota = referralQuotas[pkg];
+  const userTierIdx = tierOrder.indexOf(pkg);
+  let earned = 0;
+  let lockedBonus = 0;
+  const newRefsToConsume = [];
+
+  for (let ref of referrals) {
+    if (previouslyConsumed.includes(ref.uid)) continue;
+
+    const refTierIdx = tierOrder.indexOf(ref.package);
+    if (refTierIdx < userTierIdx) continue;
+
+    earned++;
+    newRefsToConsume.push(ref.uid);
+
+    // Only accumulate lockedBonus here — will be paid on unlock
+    const alreadyRewardedRefs = user.highTierBonusRefs || [];
+
+    if (refTierIdx > userTierIdx && !alreadyRewardedRefs.includes(ref.uid)) {
+      const bonus = bonusValues[ref.package] || 0;
+      lockedBonus += bonus;
 
       await update(userRef, {
-        [`milestones/${pkg}/roiInjectedAtUnlock`]: true,
+        balance: (user.balance || 0) + bonus,
+        highTierBonusRefs: [...alreadyRewardedRefs, ref.uid],
       });
-    } else {
-      console.log(`⛔ Skipped ROI — Already injected or less than 24h`);
-    }
 
-    const updatedSnapshot = await get(userRef);
-    const updatedUser = updatedSnapshot.val();
-    const updatedMilestone = updatedUser.milestones?.[pkg];
-    const updatedLockedROI = updatedMilestone?.lockedROI || 0;
-    const updatedBonusLocked = updatedMilestone?.lockedBonus || 0;
-    const totalUnlock = updatedLockedROI + updatedBonusLocked;
-
-    const updatePayload = {
-      withdrawable: (updatedUser.withdrawable || 0) + totalUnlock,
-      balance: (updatedUser.balance || 0) + totalUnlock,
-      [`milestones/${pkg}/rewarded`]: true,
-      [`milestones/${pkg}/lockedROI`]: 0,
-      [`milestones/${pkg}/lockedBonus`]: 0,
-    };
-
-    if (pkg === "elite") {
-      // 1️⃣ Unlock elite withdrawal
-      updatePayload.eliteLocked = false;
-
-      // 2️⃣ Move past ROI from balance to withdrawable
-      const currentBalance = updatedUser.balance || 0;
-      const currentWithdrawable = updatedUser.withdrawable || 0;
-      const initialCredit = updatedMilestone.initialCredit || 0;
-
-      const retroactiveROI = currentBalance - initialCredit;
-
-      updatePayload.withdrawable = currentWithdrawable + retroactiveROI;
       console.log(
-        `💰 Retroactive ROI of ₹${retroactiveROI} made withdrawable for Elite UID: ${uid}`
+        `💰 Added Rs.${bonus} high-tier bonus to balance for ${uid}, still locked`
       );
     }
-    console.log("🎯 Final milestone unlock payload for", uid, updatePayload);
-    console.log("🎁 Unlocking rewards:", {
-      lockedROI: updatedLockedROI,
-      lockedBonus: updatedBonusLocked,
-      balanceBefore: updatedUser.balance,
-      withdrawableBefore: updatedUser.withdrawable,
-      updatePayload,
-    });
-    await update(userRef, updatePayload);
 
-    return true;
+    if (earned >= quota) break;
   }
 
-  return false;
+  const milestoneAlreadyRewarded = milestone.rewarded;
+  const isNewlyQualified = earned >= quota && !milestoneAlreadyRewarded;
+
+  const needsPatch =
+    milestoneAlreadyRewarded &&
+    milestone.earned === 0 &&
+    (milestone.lockedROI || 0) === 0 &&
+    (milestone.lockedBonus || 0) === 0 &&
+    earned >= quota;
+
+  if (!isNewlyQualified && !needsPatch) {
+    console.log(
+      `📊 Milestone not ready or already valid for ${uid}, updating partial bonus/earned for tracking.`
+    );
+
+    // Update partial milestone info (show bonus even if not rewarded)
+    const partialUpdate = {
+      [`milestones/${pkg}/earned`]: earned,
+      [`milestones/${pkg}/lockedBonus`]: lockedBonus,
+      [`milestones/${pkg}/deadline`]:
+        user.milestones?.[pkg]?.deadline ||
+        Date.now() + (pkg === "elite" ? 30 : 21) * 24 * 60 * 60 * 1000,
+    };
+
+    await update(userRef, partialUpdate);
+    return false;
+  }
+
+  return await finalizeMilestoneUnlock(
+    userRef,
+    user,
+    milestone,
+    pkg,
+    newRefsToConsume
+  );
+}
+
+async function finalizeMilestoneUnlock(
+  userRef,
+  user,
+  milestone,
+  pkg,
+  extraRefs = []
+) {
+  const tierAmount = {
+    bronze: 3000,
+    silver: 5000,
+    gold: 10000,
+    platinum: 50000,
+    elite: 100000,
+  };
+
+  const roiCap = {
+    bronze: 6300,
+    silver: 10500,
+    gold: 21000,
+    platinum: 105000,
+    elite: 150000,
+  };
+
+  const bonusValues = {
+    silver: 1000,
+    gold: 2000,
+    platinum: 10000,
+    elite: 20000,
+  };
+
+  const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+
+  const eliteRate = user.eliteRate || 10;
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+
+  const roiInjectedFlag = milestone.roiInjectedAtUnlock || false;
+  const lastROIAt = user.lastPayoutAt || 0;
+
+  // Inject one day ROI if needed
+  if (!roiInjectedFlag && now - lastROIAt >= oneDay) {
+    const roi = await applyDailyROI(userRef.key);
+    console.log(`🧮 ROI injected before unlock for ${userRef.key}: Rs. ${roi}`);
+    await update(userRef, {
+      [`milestones/${pkg}/roiInjectedAtUnlock`]: true,
+    });
+  }
+
+  let lockedBonus = milestone.lockedBonus || 0;
+  let lockedROI = milestone.lockedROI || 0;
+
+  // ⏳ Patch ROI using currentPackageROI instead of balance
+  if (lockedROI === 0 && pkg !== "elite") {
+    const currentTrackedROI = user.currentPackageROI || 0;
+    lockedROI = roiCap[pkg] - currentTrackedROI;
+    console.log(
+      `🔁 Patching missing ROI for ${userRef.key}: roiCap=${roiCap[pkg]} - currentPackageROI=${currentTrackedROI} = ${lockedROI}`
+    );
+  }
+
+  // ✅ Patch lockedBonus from high-tier referrals if needed
+  if (lockedBonus === 0 && extraRefs.length > 0) {
+    const allUsersSnap = await get(ref(db, "users"));
+    const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+    const userTierIdx = tierOrder.indexOf(pkg);
+
+    for (let refId of extraRefs) {
+      const refUser = allUsers[refId];
+      if (!refUser || !refUser.package) continue;
+
+      const refTierIdx = tierOrder.indexOf(refUser.package);
+      if (refTierIdx > userTierIdx) {
+        lockedBonus += bonusValues[refUser.package] || 0;
+      }
+    }
+
+    console.log(`📥 Patched lockedBonus from referrals: ₹${lockedBonus}`);
+  }
+
+  const totalUnlock = lockedROI + lockedBonus;
+  const updatePayload = {
+    balance: (user.balance || 0) + totalUnlock,
+    withdrawable: (user.withdrawable || 0) + totalUnlock,
+    [`milestones/${pkg}/lockedROI`]: 0,
+    [`milestones/${pkg}/lockedBonus`]: 0,
+    [`milestones/${pkg}/earned`]: milestone.earned || extraRefs.length,
+    [`milestones/${pkg}/rewarded`]: true,
+    usedPackageRefs: [...(user.usedPackageRefs || []), ...extraRefs],
+    currentPackageROI: 0, // ✅ Reset tracker
+  };
+
+  if (pkg === "elite") {
+    updatePayload.eliteLocked = false;
+    const currentBalance = user.balance || 0;
+    const initialCredit = milestone.initialCredit || 0;
+    const retroactiveROI = currentBalance - initialCredit;
+    updatePayload.withdrawable = (user.withdrawable || 0) + retroactiveROI;
+
+    console.log(
+      `💰 Retroactive ROI of ₹${retroactiveROI} made withdrawable for Elite UID: ${userRef.key}`
+    );
+  }
+
+  console.log(
+    "🎯 Final milestone unlock payload for",
+    userRef.key,
+    updatePayload
+  );
+  await update(userRef, updatePayload);
+  await update(userRef, { package: "" });
+  return true;
 }

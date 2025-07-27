@@ -1,4 +1,4 @@
-import { ref, get, update, runTransaction } from "firebase/database";
+import { ref, get, runTransaction } from "firebase/database";
 import { db } from "../../firebase";
 
 const tierAmount = {
@@ -9,14 +9,28 @@ const tierAmount = {
   elite: 100000,
 };
 
+const roiCap = {
+  bronze: 6300,
+  silver: 10500,
+  gold: 21000,
+  platinum: 105000,
+  elite: 150000,
+};
+
 export async function applyDailyROI(uid) {
   const userRef = ref(db, `users/${uid}`);
   const snapshot = await get(userRef);
-  if (!snapshot.exists()) return null;
+  if (!snapshot.exists()) {
+    console.warn(`❌ No user data found for UID: ${uid}`);
+    return null;
+  }
 
   const userData = snapshot.val();
   const { package: pkg } = userData;
-  if (!pkg) return null;
+  if (!pkg) {
+    console.warn(`⚠️ No package assigned for UID: ${uid}`);
+    return null;
+  }
 
   const rate = userData.eliteRate || 10;
   const dailyAmount = (tierAmount[pkg] * rate) / 100;
@@ -24,87 +38,70 @@ export async function applyDailyROI(uid) {
   const last = userData.lastPayoutAt || 0;
   const oneDay = 24 * 60 * 60 * 1000;
 
-  // ⛔ Stop if ROI already applied within 24h
-  if (now - last < oneDay) return null;
-
-  const roiCap = {
-    bronze: 6300,
-    silver: 10500,
-    gold: 21000,
-    platinum: 105000,
-    elite: 150000,
-  };
+  if (now - last < oneDay) {
+    console.log(`⏱️ ROI already applied within 24h for ${uid}`);
+    return null;
+  }
 
   const maxCap = roiCap[pkg];
   const nextBalance = (userData.balance || 0) + dailyAmount;
-  if (nextBalance > maxCap) return null;
-
-  // 🧠 Milestone logic
-  const milestone = userData?.milestones?.[pkg];
-  const isElite = pkg === "elite";
-  const milestoneCompleted = milestone?.rewarded;
-
-  // 📤 ROI destination decision
-  let newWithdrawable = userData.withdrawable || 0;
-  let newLockedROI = milestone?.lockedROI || 0;
-
-  if (isElite) {
-    const canWithdrawElite = !userData.eliteLocked;
-    newWithdrawable = canWithdrawElite
-      ? newWithdrawable + dailyAmount
-      : newWithdrawable;
-    newLockedROI = canWithdrawElite ? newLockedROI : newLockedROI + dailyAmount;
-  } else {
-    newWithdrawable = milestoneCompleted
-      ? newWithdrawable + dailyAmount
-      : newWithdrawable;
-    newLockedROI = milestoneCompleted
-      ? newLockedROI
-      : newLockedROI + dailyAmount;
+  if (nextBalance > maxCap) {
+    console.log(`💰 Cap reached for ${uid}, skipping ROI`);
+    return null;
   }
 
-  // 🛠 Unified Firebase update
+  // Firebase Transaction
   await runTransaction(userRef, (data) => {
-    if (!data) return;
+    if (!data) {
+      console.warn(`⛔ runTransaction found no data for ${uid}`);
+      return data;
+    }
 
     const last = data.lastPayoutAt || 0;
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
+    if (now - last < oneDay) {
+      console.log(`⏱️ Duplicate ROI block inside transaction for ${uid}`);
+      return data;
+    }
 
-    if (now - last < oneDay) return; // 🚫 Block if already paid within 24h
-
-    const dailyAmount =
-      (tierAmount[data.package] * (data.eliteRate || 10)) / 100;
+    const rate = data.eliteRate || 10;
+    const dailyAmount = (tierAmount[data.package] * rate) / 100;
+    const pkg = data.package;
+    const milestone = data.milestones?.[pkg] || {};
+    const milestoneCompleted = milestone.rewarded || false;
 
     data.balance = (data.balance || 0) + dailyAmount;
 
-    const milestone = data.milestones?.[data.package] || {};
-    const milestoneCompleted = milestone.rewarded || false;
-
-    if (data.package === "elite") {
+    if (pkg === "elite") {
       const canWithdrawElite = !data.eliteLocked;
       if (canWithdrawElite) {
         data.withdrawable = (data.withdrawable || 0) + dailyAmount;
       } else {
         milestone.lockedROI = (milestone.lockedROI || 0) + dailyAmount;
+        data.currentPackageROI = (data.currentPackageROI || 0) + dailyAmount;
       }
     } else {
       if (milestoneCompleted) {
         data.withdrawable = (data.withdrawable || 0) + dailyAmount;
       } else {
         milestone.lockedROI = (milestone.lockedROI || 0) + dailyAmount;
+        data.currentPackageROI = (data.currentPackageROI || 0) + dailyAmount;
       }
     }
 
     data.milestones = {
       ...data.milestones,
-      [data.package]: milestone,
+      [pkg]: milestone,
     };
-    data.lastPayoutAt = now;
 
+    data.lastPayoutAt = now;
     return data;
   });
 
+  const postSnapshot = await get(userRef);
+  const postData = postSnapshot.val();
+  console.log("📬 Post-transaction user data:", postData);
   console.log(`✅ Daily ROI added for ${uid}: Rs. ${dailyAmount}`);
   return dailyAmount;
 }

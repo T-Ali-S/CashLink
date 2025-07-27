@@ -3,7 +3,6 @@ import { auth, db } from "../../firebase";
 import { ref, get, update } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../Admin/AdminLayout";
-import { sendNotification } from "../utils/sendNotification";
 import { RewardManager } from "../utils/RewardManager";
 
 export default function StartWithNothing() {
@@ -11,6 +10,7 @@ export default function StartWithNothing() {
   const [referralCounts, setReferralCounts] = useState({});
   const navigate = useNavigate();
 
+  const packageOrder = ["bronze", "silver", "gold", "platinum", "elite"];
   const packageGoals = {
     bronze: { target: 10, reward: 5000 },
     silver: { target: 8, reward: 10000 },
@@ -28,26 +28,68 @@ export default function StartWithNothing() {
       if (!snap.exists()) return;
 
       const userInfo = snap.val();
-      const usedReferrals = userInfo.usedReferrals || {};
-
       const allUsersSnap = await get(ref(db, "users"));
       const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
 
-      const usedStartRefs = Object.values(usedReferrals).flat();
+      const usedStartRefs = Object.values(userInfo.usedReferrals || {}).flat();
       const usedPackageRefs = userInfo.usedPackageRefs || [];
-      const excluded = [...new Set([...usedStartRefs, ...usedPackageRefs])];
+      const allUsed = new Set([...usedStartRefs, ...usedPackageRefs]);
 
-      const referrals = Object.entries(allUsers)
-        .filter(([uid, u]) => {
-          return (
-            u.referredBy === user.uid && u.package && !excluded.includes(uid)
-          );
-        })
+      const allReferrals = Object.entries(allUsers)
+        .filter(([uid, u]) => u.referredBy === user.uid && u.package)
         .map(([uid, u]) => ({ uid, ...u }));
+
+      const currentTier = userInfo.package || "";
+      const packageTierIndex = packageOrder.indexOf(currentTier);
+
+      const reconsumable = [];
+      const remainingRefs = [];
+
+      console.log("📦 Current package tier:", currentTier);
+      console.log("🔁 All referrals:", allReferrals.map((r) => r.uid));
+      console.log("🚫 All used (start + package):", [...allUsed]);
+      console.log("📄 usedStartRefs before reconsume logic:", usedStartRefs);
+
+      allReferrals.forEach((ref) => {
+        const refTierIndex = packageOrder.indexOf(ref.package);
+        const isUsedInPackage = usedPackageRefs.includes(ref.uid);
+        const isUsedInStart = usedStartRefs.includes(ref.uid);
+
+        if (!isUsedInPackage && refTierIndex >= packageTierIndex) {
+          reconsumable.push(ref.uid);
+        } else if (!isUsedInStart && !isUsedInPackage) {
+          remainingRefs.push(ref);
+        }
+      });
+
+      console.log("✅ Reconsumable referrals to migrate:", reconsumable);
+      console.log(
+        "🆕 Remaining valid referrals for StartWithNothing:",
+        remainingRefs.map((r) => r.uid)
+      );
+
+      if (reconsumable.length > 0) {
+        const updatedUsedReferrals = { ...userInfo.usedReferrals };
+        for (const pkg in updatedUsedReferrals) {
+          updatedUsedReferrals[pkg] = updatedUsedReferrals[pkg].filter(
+            (id) => !reconsumable.includes(id)
+          );
+        }
+
+        const updatedPackageRefs = [...usedPackageRefs, ...reconsumable];
+
+        await update(ref(db, `users/${user.uid}`), {
+          usedReferrals: updatedUsedReferrals,
+          usedPackageRefs: updatedPackageRefs,
+        });
+
+        userInfo.usedReferrals = updatedUsedReferrals;
+        userInfo.usedPackageRefs = updatedPackageRefs;
+      }
 
       const counts = {};
       Object.keys(packageGoals).forEach((pkg) => {
-        counts[pkg] = referrals.filter((u) => u.package === pkg).length;
+        counts[pkg] = remainingRefs.filter((u) => u.package === pkg).length;
       });
 
       setUserData({ ...userInfo, uid: user.uid });
@@ -65,14 +107,16 @@ export default function StartWithNothing() {
     const allUsersSnap = await get(ref(db, "users"));
     const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
 
-    const existingUsed = userData.usedReferrals?.[pkg] || [];
+    const used = Object.values(userData.usedReferrals || {}).flat();
+    const usedPackageRefs = userData.usedPackageRefs || [];
 
     const newRefs = Object.entries(allUsers)
       .filter(
         ([uid, u]) =>
           u.referredBy === userData.uid &&
           u.package &&
-          !existingUsed.includes(uid)
+          !used.includes(uid) &&
+          !usedPackageRefs.includes(uid)
       )
       .slice(0, goal)
       .map(([uid]) => uid);
@@ -84,20 +128,24 @@ export default function StartWithNothing() {
     );
 
     await update(ref(db, `users/${userData.uid}`), {
-      [`usedReferrals/${pkg}`]: [...existingUsed, ...newRefs],
+      [`usedReferrals/${pkg}`]: [
+        ...(userData.usedReferrals?.[pkg] || []),
+        ...newRefs,
+      ],
     });
 
     alert(
       `🎉 You've earned Rs. ${packageGoals[pkg].reward} for ${pkg} referrals!`
     );
+
     setUserData((prev) => ({
       ...prev,
-      balance: updatedBalance,
       usedReferrals: {
         ...(prev.usedReferrals || {}),
-        [pkg]: [...existingUsed, ...newRefs],
+        [pkg]: [...(prev.usedReferrals?.[pkg] || []), ...newRefs],
       },
     }));
+
     setReferralCounts((prev) => ({ ...prev, [pkg]: 0 }));
   };
 
@@ -111,15 +159,15 @@ export default function StartWithNothing() {
           Invite users with your referral code. Earn rewards when they buy
           packages.
         </p>
+
         {userData && (
           <div className="bg-white rounded-lg p-4 mb-6 shadow text-center">
             <h3 className="text-2xl font-bold text-black mb-1">
               Your Referral Code
             </h3>
-            <p className="text-xl  font-bold text-gold100 font-mono mb-2">
+            <p className="text-xl font-bold text-gold100 font-mono mb-2">
               {userData.referralCode}
             </p>
-
             <h4 className="text-sm text-gray-600 mb-1">Your Invite Link</h4>
             <div className="flex justify-center items-center gap-2 flex-wrap">
               <span className="text-sm bg-gray-700 px-4 py-1 rounded-md font-mono text-white">
@@ -138,6 +186,7 @@ export default function StartWithNothing() {
             </div>
           </div>
         )}
+
         {Object.entries(packageGoals).map(([pkg, data]) => {
           const current = referralCounts[pkg] || 0;
           const progress = Math.min((current / data.target) * 100, 100);

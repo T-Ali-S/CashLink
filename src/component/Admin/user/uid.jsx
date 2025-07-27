@@ -10,7 +10,7 @@ import { IoIosArrowBack } from "react-icons/io";
 import AdminLayout from "/Work/My own/Project/Frontend/Pyramid/src/component/Admin/AdminLayout";
 import { SiPantheon } from "react-icons/si";
 import ReferralProgressBar from "../../Admin/ReferralProgressBar";
-import useMilestoneStatus from "../../Others/hooks/useMilestoneStatus"
+import useMilestoneStatus from "../../Others/hooks/useMilestoneStatus";
 import {
   expireMilestoneIfOverdue,
   checkAndUnlockMilestone,
@@ -37,7 +37,6 @@ export default function ManageUser() {
         setUserInfo(data);
         setSelectedPackage(data.package || "");
 
-        // Load who referred this user
         if (data.referredBy) {
           const referrerSnap = await get(ref(db, `users/${data.referredBy}`));
           if (referrerSnap.exists()) {
@@ -45,7 +44,6 @@ export default function ManageUser() {
           }
         }
 
-        // Load users they referred
         const allUsersSnap = await get(ref(db, `users`));
         if (allUsersSnap.exists()) {
           const allUsers = allUsersSnap.val();
@@ -54,7 +52,7 @@ export default function ManageUser() {
           );
           setReferrals(referred);
         }
-        // ✅ Trigger milestone check passively when admin views profile
+
         await processROIandUnlock(uid);
       }
       setLoading(false);
@@ -83,26 +81,12 @@ export default function ManageUser() {
   };
 
   const assignPackage = async () => {
-    const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
-    const referralQuotas = {
-      bronze: 5,
-      silver: 3,
-      gold: 2,
-      platinum: 2,
-      elite: 1,
-    };
     const tierAmount = {
       bronze: 3000,
       silver: 5000,
       gold: 10000,
       platinum: 50000,
       elite: 100000,
-    };
-    const bonusValues = {
-      silver: 1000,
-      gold: 2000,
-      platinum: 10000,
-      elite: 20000,
     };
 
     const selected = selectedPackage;
@@ -115,12 +99,10 @@ export default function ManageUser() {
       });
     }
 
-    // Load user data
     const snapshot = await get(ref(db, `users/${uid}`));
     if (!snapshot.exists()) return;
     const userData = snapshot.val();
 
-    // ❌ Prevent reassignment of different package if current milestone not completed
     if (
       userData.package &&
       userData.package !== selected &&
@@ -133,22 +115,21 @@ export default function ManageUser() {
       });
     }
 
-    // 🎯 Set up milestone and reward logic
     const roiRate =
       selected === "elite" ? Math.floor(Math.random() * 3) + 1 : 10;
     const dailyROI = (packageAmount * roiRate) / 100;
-    const firstReward = selected === "elite" ? dailyROI : dailyROI;
-    const rewardPercent = roiRate / 100;
-    const duration = selected === "elite" ? 30 : 20;
+    const firstReward = dailyROI;
+    const duration = selected === "elite" ? 30 : 21;
     const deadline = Date.now() + duration * 24 * 60 * 60 * 1000;
 
     const updatedMilestone = {
-      goal: referralQuotas[selected],
+      goal: null,
       earned: 0,
       rewarded: false,
       deadline,
       lockedROI: selected === "elite" ? dailyROI : 0,
       initialCredit: selected === "elite" ? firstReward : 0,
+      lockedBonus: 0,
     };
 
     const eliteRate = selected === "elite" ? roiRate : null;
@@ -157,96 +138,44 @@ export default function ManageUser() {
     const newBalance = (userData.balance || 0) + firstReward;
     const newWithdrawable = firstReward;
 
-    // 🔒 Track referrals used for this package
-    const allUsersSnap = await get(ref(db, "users"));
-    const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
-    const previouslyConsumed = userData.usedPackageRefs || [];
-
-    const referrals = Object.entries(allUsers)
-      .filter(([refId, u]) => u.referredBy === uid && u.package)
-      .map(([refId, u]) => ({ uid: refId, ...u }));
-    const availableRefs = referrals.filter(
-      (ref) => !previouslyConsumed.includes(ref.uid)
-    );
-    const refsToConsume = availableRefs
-      .slice(0, referralQuotas[selected])
-      .map((u) => u.uid);
-
-    // ✅ Update user record
-    await update(ref(db, `users/${uid}`), {
+    const milestoneUpdatePayload = {
       package: selected,
-      // package: selected.charAt(0).toUpperCase() + selected.slice(1),
       balance: newBalance,
       withdrawable: newWithdrawable,
       eliteDailyROI: eliteLocked ? dailyROI : null,
       eliteRate,
       eliteLocked,
-      // lastPayoutAt: Date.now(),
+      lastPayoutAt: Date.now(),
+      currentPackageROI: selected === "elite" ? 0 : firstReward, // ⬅️ Track ROI here
       milestones: {
         ...userData.milestones,
         [selected]: updatedMilestone,
       },
-      usedPackageRefs: [...previouslyConsumed, ...refsToConsume],
-    });
+    };
 
-    // 🎁 Referral bonus for referrer (if eligible)
+    await update(ref(db, `users/${uid}`), milestoneUpdatePayload);
+
     if (userData.referredBy) {
-      const refSnap = await get(ref(db, `users/${userData.referredBy}`));
-      if (refSnap.exists()) {
-        const refData = refSnap.val();
-        const refTierIndex = tierOrder.indexOf(refData.package);
-        const newTierIndex = tierOrder.indexOf(selected);
-
-        // Only award if referrer has an active package
-        if (refTierIndex !== -1 && newTierIndex >= refTierIndex) {
-          const bonus = bonusValues[selected] || 0;
-          const refMilestone = refData.milestones?.[refData.package] || {};
-
-          await update(ref(db, `users/${userData.referredBy}`), {
-            milestones: {
-              ...refData.milestones,
-              [refData.package]: {
-                ...refMilestone,
-                earned: (refMilestone.earned || 0) + 1,
-                lockedBonus: (refMilestone.lockedBonus || 0) + bonus,
-              },
-            },
-          });
-          console.log(
-            `🪙 Referral bonus of ₹${bonus} added to ${userData.referredBy}`
-          );
-
-          await processROIandUnlock(userData.referredBy);
-        } else {
-          console.log(
-            `⚠️ ${userData.referredBy} has no package — bonus not credited`
-          );
-        }
-      }
+      await checkAndUnlockMilestone(userData.referredBy);
     }
 
-    // 📈 Update investment tracker
-    await runTransaction(ref(db, "liveTracker/total"), (prev) => {
-      return (prev || 0) + packageAmount;
-    });
+    await processROIandUnlock(uid);
 
-    // 🎯 Trigger milestone unlock for current user
-    await checkAndUnlockMilestone(uid);
+    await runTransaction(
+      ref(db, "liveTracker/total"),
+      (prev) => (prev || 0) + packageAmount
+    );
 
-    // ✅ Confirmation
     setUserInfo((prev) => ({
       ...prev,
       package: selected,
       balance: newBalance,
     }));
+
     setAlert({
       visible: true,
       type: "success",
-      message:
-        `✅ ${userData.name} assigned "${selected}" and rewarded Rs. ${firstReward}.\n` +
-        `${refsToConsume.length} referral${
-          refsToConsume.length === 1 ? "" : "s"
-        } used to unlock milestone progress.`,
+      message: `✅ ${userData.name} assigned "${selected}" and rewarded Rs. ${firstReward}.`,
     });
   };
 
@@ -273,7 +202,7 @@ export default function ManageUser() {
 
         <div className="mt-4">
           <h4 className="font-semibold text-white">
-            Current Package: {""}
+            Current Package:{" "}
             <span className="text-xl text-gold200 font-bold">
               {userInfo?.package
                 ? userInfo.package.charAt(0).toUpperCase() +
@@ -307,11 +236,7 @@ export default function ManageUser() {
           <h4 className="text-2xl text-center font-bold mt-6 mb-6 text-yellow-400">
             Withdrawal Requests
           </h4>
-          <div
-          //  className="border border-1 p-20 border-white border-rounded"
-          >
-            {userInfo && <TransactionAdminView userId={uid} />}
-          </div>
+          <div>{userInfo && <TransactionAdminView userId={uid} />}</div>
 
           <hr className="mt-10" />
           <div className="mt-8 bg-white p-4 rounded shadow mb-5">

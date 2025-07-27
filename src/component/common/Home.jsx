@@ -12,9 +12,19 @@ import { applyDailyROI } from "../utils/roiManager";
 import { processROIandUnlock } from "../utils/milestoneManager";
 import useMilestoneStatus from "../Others/hooks/useMilestoneStatus";
 import { getLiveTrackerTotal } from "../utils/liveTrackerUtils";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Pagination, EffectFade } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
+import "swiper/css/effect-fade";
 
 export default function Home() {
   const [userData, setUserData] = useState(null);
+  const totalWithdrawable = userData?.withdrawable || 0;
+  const milestone = useMilestoneStatus(userData?.uid, userData?.package);
+  //  console.log("🧾 milestone lockedBonus:", milestone?.lockedBonus);
+  // console.log("🧾 milestone object:", milestone);
+  // console.log("🧾 userData.package:", userData?.package);
   const [liveTotal, setLiveTotal] = useState(150000000);
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,29 +56,34 @@ export default function Home() {
 
   useEffect(() => {
     async function triggerCombinedLogic() {
-      await processROIandUnlock(userData.uid);
+      const currentUser = auth.currentUser;
+      if (!currentUser?.uid) return;
+      await processROIandUnlock(currentUser.uid);
+
+      // Optional: delay before refetch to ensure Firebase transaction completes
+      await new Promise((res) => setTimeout(res, 200));
 
       const milestoneSnap = await get(
-        ref(db, `users/${userData.uid}/milestones/${userData.package}`)
+        ref(db, `users/${currentUser.uid}/milestones/${userData?.package}`)
       );
       if (milestoneSnap.exists()) {
-        console.log("🧾 Milestone after unlock:", milestoneSnap.val());
+        console.log("📦 Refreshed Milestone Snapshot:", milestoneSnap.val());
       }
 
-      const snap = await get(ref(db, `users/${userData.uid}`));
+      const snap = await get(ref(db, `users/${currentUser.uid}`));
       if (snap.exists()) {
         const fresh = snap.val();
-        setUserData({ ...fresh, uid: userData.uid });
-      }
-
-      if (unlocked) {
-        console.log(`🏆 Milestone unlocked during login for ${userData.uid}`);
+        console.log("🧾 Latest user snapshot from Firebase:", fresh);
+        setUserData({ ...fresh, uid: currentUser.uid });
       }
     }
 
-    if (userData?.uid) triggerCombinedLogic();
+    if (userData?.uid) {
+      triggerCombinedLogic();
+    }
   }, [userData?.uid]);
 
+  /////fetching current pacakge
   useEffect(() => {
     if (location.hash === "#packages" && packageRef.current) {
       packageRef.current.scrollIntoView({ behavior: "smooth" });
@@ -83,213 +98,320 @@ export default function Home() {
     fetchLiveTotal();
   }, []);
 
-  const totalWithdrawable = userData?.withdrawable || 0;
+  //  useEffect(() => {
+  //     const interval = setInterval(() => {
+  //       // recompute timeLeft
+  //     }, 6000); // every minute
 
-  const milestone = useMilestoneStatus(userData?.uid, userData?.package);
+  //     return () => clearInterval(interval);
+  //   }, [milestone.deadline]);
+  // console.log(milestone.deadline);
 
+  const now = Date.now();
+  const deadline = milestone?.deadline;
+  const timeLeft = deadline - now;
+  const daysLeft = Math.max(Math.floor(timeLeft / (1000 * 60 * 60 * 24)), 0);
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center text-center md:text-left">
-        {/* Left Side: Video */}
-        <div className="relative w-full md:w-1/2 h-64 md:h-full">
-          <video
-            autoPlay
-            muted
-            loop
-            className="w-full h-full object-cover [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"
-          >
-            <source src="/assets/myvideo.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
+    <>
+      {/* Slider section - full width, no side padding */}
+      {/* Desktop & Tablet Slider */}
+      <section className="w-full relative hidden md:block mt-20">
+        <div className="w-full px-4 lg:px-8">
+          <div className="h-[320px] lg:h-[650px] xl:h-[780px] overflow-hidden bg-black border border-gold-500 rounded-2xl shadow-md">
+            <Swiper
+              modules={[Autoplay, Pagination, EffectFade]}
+              autoplay={{ delay: 4000 }}
+              loop={false}
+              effect="fade"
+              className="w-full h-full"
+            >
+              <SwiperSlide>
+                <img
+                  src="/assets/image1.png"
+                  alt="Slide 1"
+                  className="w-full h-full object-cover object-top"
+                />
+              </SwiperSlide>
+              <SwiperSlide>
+                <img
+                  src="/assets/image2.png"
+                  alt="Slide 2"
+                  className="w-full h-full object-cover object-top"
+                />
+              </SwiperSlide>
+              <SwiperSlide>
+                <img
+                  src="/assets/image3.png"
+                  alt="Slide 3"
+                  className="w-full h-full object-cover object-top"
+                />
+              </SwiperSlide>
+            </Swiper>
+          </div>
         </div>
+      </section>
 
-        {/* Right Side: Text Content */}
-        <div className="w-full md:w-1/2 p-6 md:p-12">
-          {userData?.balance > 0 ||
-          userData?.withdrawable > 0 ||
-          userData?.package ? (
-            <div className="bg-gray-200 text-black p-4 rounded-xl shadow text-center mb-6">
-              <h3 className="text-2xl font-medium text-gold200">
-                Your Balance
-              </h3>
-              <p className="text-3xl font-bold mt-2">
-                Rs. {trueBalance || 0}
-                <button
-                  onClick={async () => {
-                    const user = auth.currentUser;
-                    if (user) {
-                      const snap = await get(ref(db, `users/${user.uid}`));
-                      if (snap.exists()) {
-                        const fresh = snap.val();
-                        setUserData({ ...fresh, uid: user.uid });
-                      }
-                    }
-                  }}
-                  className="ms-2 text-xl text-gray-700 underline hover:text-gold200"
-                >
-                  <MdLoop />
-                </button>
-              </p>
+      {/* Mobile Version (only visible on small screens) */}
+      <section className="w-full relative block md:hidden mt-20">
+        <div className="w-full px-4">
+          {" "}
+          {/* Adds horizontal padding */}
+          <div className="w-full bg-black border border-gray-300 rounded-2xl overflow-hidden">
+            <Swiper
+              modules={[Autoplay, Pagination, EffectFade]}
+              autoplay={{ delay: 4000 }}
+              loop={false}
+              effect="fade"
+              className="w-full"
+            >
+              <SwiperSlide className="flex items-center justify-center">
+                <img
+                  src="/assets/image1.png"
+                  alt="Slide 1"
+                  className="max-w-full max-h-[80vh] object-contain"
+                />
+              </SwiperSlide>
+              <SwiperSlide className="flex items-center justify-center">
+                <img
+                  src="/assets/image2.png"
+                  alt="Slide 2"
+                  className="max-w-full max-h-[80vh] object-contain"
+                />
+              </SwiperSlide>
+              <SwiperSlide className="flex items-center justify-center">
+                <img
+                  src="/assets/image3.png"
+                  alt="Slide 3"
+                  className="max-w-full max-h-[80vh] object-contain"
+                />
+              </SwiperSlide>
+            </Swiper>
+          </div>
+        </div>
+      </section>
 
-              {!userData.package && (
-                <p className="text-xs mt-1 text-red-500 italic">
-                  No package currently active
-                </p>
-              )}
-              {userData.package && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Currently Active Package: <br />
-                  <span className="text-xl font-bold text-green-800">
-                    {userData.package.toUpperCase()}
-                  </span>
-                </p>
-              )}
+      {/* Balance Card Section */}
+      <div className="w-full px-4 sm:px-6 md:px-10 lg:px-16">
+        <div className="w-full mt-10 mb-10 flex justify-center items-center">
+          <div className="w-full max-w-2xl">
+            {userData?.balance > 0 ||
+            userData?.withdrawable > 0 ||
+            userData?.package ? (
+              <div className="relative bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] p-[4px] rounded-2xl shadow-lg h-full">
+                <div className="bg-[#192846] text-white p-4 sm:p-6 md:p-8 rounded-[16px] text-center h-full flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent">
+                      Your Balance
+                    </h3>
+                    <p className="text-3xl font-bold mt-2">
+                      Rs. {userData?.balance || 0}  
+                      <button
+                        onClick={async () => {
+                          const user = auth.currentUser;
+                          if (user) {
+                            const snap = await get(
+                              ref(db, `users/${user.uid}`)
+                            );
+                            if (snap.exists()) {
+                              const fresh = snap.val();
+                              setUserData({ ...fresh, uid: user.uid });
+                            }
+                          }
+                        }}
+                        className="ms-2 text-xl text-gray-200 underline hover:text-gold200"
+                      >
+                        <MdLoop />
+                      </button>
+                    </p>
 
-              <div className="text-sm text-gray-500 mt-2">
-                <span title="Referral bonuses are excluded until milestone is completed">
-                  Withdrawable:{" "}
-                </span>
-                <span className="text-green-700 font-bold">
-                  Rs. {userData?.withdrawable || 0}
-                </span>
-                <div className="text-xs text-gray-400 mt-1">
-                  {/* You’ve earned Rs. {userData?.bonusWithdrawable || 0} in goal
-                  bonuses. */}
-                  <br />
-                  {!milestone.loading && (
-                    <div className="mt-2 text-sm text-gray-700">
-                      <span title={milestone.tooltip}>
-                        {milestone.statusText}
-                      </span>
-                      <br />
-                      {!milestone.rewarded && !milestone.expired && (
-                        <span>
-                          You need <b>{milestone.referralsNeeded}</b> more
-                          referral
-                          {milestone.referralsNeeded !== 1 && "s"} to unlock
-                          rewards.
-                          {milestone.timeLeft !== null &&
-                            ` (${milestone.timeLeft} days left)`}
+                    {/* show lockedBonus separately below balance */}
+                    {milestone?.lockedBonus > 0 && (
+                      <p className="text-sm text-yellow-300 mt-1">
+                        + ₹{milestone.lockedBonus} referral bonus (locked until
+                        milestone completion)
+                      </p>
+                    )}
+
+                    {!userData.package && (
+                      <p className="text-xs mt-1 text-red-500 italic">
+                        No package currently active
+                      </p>
+                    )}
+                    {userData.package && (
+                      <p className="text-sm text-white mt-1">
+                        Currently Active Package: <br />
+                        <span className="text-2xl font-bold bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent">
+                          {userData.package.toUpperCase()}
                         </span>
-                      )}
+                      </p>
+                    )}
+
+                    <div className="text-sm mt-2">
+                      <span title="Referral bonuses are excluded until milestone is completed">
+                        Withdrawable:
+                      </span>{" "}
+                      <span className="text-lg font-bold">
+                        Rs. {userData?.withdrawable || 0}
+                      </span>
+                      <div className="text-xs mt-1">
+                        {!milestone.loading && (
+                          <div className="mt-2 text-sm">
+                            <span title={milestone.tooltip}>
+                              {milestone.statusText}
+                            </span>
+                            <br />
+                            {!milestone.rewarded && !milestone.expired && (
+                              <div className="mb-2">
+                                Referrals needed:{" "}
+                                <b className="mb-2">
+                                  {milestone.referralsNeeded}
+                                </b>
+                                {milestone.referralsNeeded !== 1 && " "}
+                                <br />
+                                {/* {milestone.timeLeft !== null &&
+                                  ` (Expires in: ${milestone.timeLeft} days)`} */}
+                                <p>
+                                  {" "}
+                                  Expires in:{" "}
+                                  {daysLeft > 0
+                                    ? `${daysLeft} ${
+                                        daysLeft === 1 ? "" : ""
+                                      } days`
+                                    : "Deadline passed"}{" "}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {/* Rs.{" "} */}
+                        {/* {milestone.lockedBonus ||
+                          userData?.bonusWithdrawable ||
+                          0}{" "}
+                        is pending until your milestone is completed. */}
+                        {/* {milestone?.lockedBonus > 0 && (
+                        <p className="text-sm text-yellow-300 mt-1">
+                          + ₹{milestone.lockedBonus} referral bonus (locked
+                          until milestone completion)
+                        </p>
+                      )} */}
+                      </div>
                     </div>
-                  )}
-                  Rs. {milestone.lockedBonus || 0} is pending until your
-                  milestone is completed.
+                  </div>
+
+                  <button
+                    onClick={() => navigate("/withdraw")}
+                    className="mt-4 bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] hover:brightness-105 text-black font-semibold px-5 py-2 rounded w-full sm:w-auto mx-auto"
+                  >
+                    Withdraw
+                  </button>
                 </div>
               </div>
-
-              <button
-                onClick={() => navigate("/withdraw")}
-                className="mt-3 bg-gold200 hover:bg-gold100 text-white px-4 py-1 rounded"
-              >
-                Withdraw
-              </button>
-            </div>
-          ) : (
-            <div>
-              <h1 className="text-gold100 text-3xl md:text-5xl font-bold mb-4">
-                Grow Your Wealth with Us
-              </h1>
-              <p className="mb-6 text-lg text-white">
-                Invest in secure packages, earn daily, withdraw anytime.
-              </p>
-              <button
-                onClick={() => {
-                  const user = auth.currentUser;
-                  if (!user) {
-                    navigate("/Signin");
-                  } else {
-                    // Scroll to package section
-                    packageRef.current?.scrollIntoView({ behavior: "smooth" });
-                  }
-                }}
-                className="bg-gold200 text-white font-bold px-6 py-2 rounded hover:bg-gold100"
-              >
-                Get Started
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="h-screen w-full flex flex-col md:flex-row items-center justify-center  text-white md:-mb-36">
-        {/* Left Side: Dummy Content */}
-        <div className="w-full md:w-1/2 p-6 md:p-12 text-center md:text-left">
-          <h2 className="text-4xl md:text-5xl font-bold mb-5 text-yellow-300">
-            Real-Time Progress
-          </h2>
-          <p className="text-lg text-gray-300">
-            Monitor your investments as they grow. Stay informed and inspired
-            with our transparent, up-to-the-minute progress tracker.
-            <br />
-          </p>
-          <div className="mt-5">
-            <span className="text-2xl font-bold text-white ">
-              {" "}
-              Get Bouses at every MileStone!
-              {/* {milestoneUnlocked && (
-                <div className="mt-2">
-                  <span className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full animate-pulse">
-                    🎉 Package Milestone Unlocked!
-                  </span>
+            ) : (
+              <div className="relative bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] p-[4px] rounded-2xl shadow-lg">
+                <div className="bg-[#192846] text-white p-6 sm:p-8 md:p-10 rounded-[16px] text-center">
+                  <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent">
+                    Grow Your Wealth with Us
+                  </h1>
+                  <p className="mb-6 text-base sm:text-lg text-gray-300">
+                    Invest in secure packages, earn daily, withdraw anytime.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const user = auth.currentUser;
+                      if (!user) {
+                        navigate("/Signin");
+                      } else {
+                        packageRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                        });
+                      }
+                    }}
+                    className="bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] hover:brightness-105 text-black font-semibold px-6 py-2 rounded"
+                  >
+                    Get Started
+                  </button>
                 </div>
-              )} */}
-            </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right Side: Investment Tracker */}
-        <div className="w-full md:w-1/2 p-6 md:p-12">
-          <h2 className="text-2xl font-semibold mb-4">
-            Live Investment Tracker
-          </h2>
-
-          <div className="relative bg-gray-700 h-4 rounded-full overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 h-full transition-all duration-700"
-              style={{
-                width: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
-              }}
-            ></div>
-            {/* moving Gif */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2"
-              style={{
-                left: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              {/* <video
-                src="/assets/finalcat.webm" // Place your mp4 in public/assets and use correct path
-                autoPlay
-                loop
-                muted
-                className="h-8 sm:h-10 aspect-square object-contain"
-              /> */}
+        <section className="w-full flex flex-col md:flex-row items-start justify-between text-white pt-10 md:pt-24 pb-10 md:pb-20 mt-20 mb-10">
+          {/* Left Side: Text */}
+          <div className="w-full md:w-1/2 p-6 md:p-12 text-center md:text-left flex items-center justify-center md:justify-start">
+            <div className="text-4xl font-bold bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent">
+              Get Bonuses at every {<br className="md:hidden" />} Milestone!
             </div>
           </div>
 
-          <p className="text-gray-300 mt-4 text-sm sm:text-base">
-            Rs. {liveTotal.toLocaleString()} raised — goal: Rs. 20 Crore
-          </p>
+          {/* Right Side: Investment Tracker */}
+          <div className="w-full md:w-1/2 p-6 md:p-12 text-white flex items-center justify-center">
+            <div className="w-full max-w-md space-y-6">
+              <h2 className="text-2xl font-semibold mb-4 text-yellow-400">
+                Live Investment Tracker
+              </h2>
+
+              {/* Glowing Progress Bar */}
+              <div
+                className="relative h-6 rounded-full overflow-hidden border-2"
+                style={{
+                  borderColor: "gold",
+                  background: "rgba(255, 215, 0, 0.1)",
+                  boxShadow: "0 0 8px gold",
+                }}
+              >
+                <div
+                  className="absolute h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.min((liveTotal / 200000000) * 100, 100)}%`,
+                    background:
+                      "linear-gradient(to right, #ffd700, #ffcc00, #b8860b)",
+                  }}
+                ></div>
+
+                <div
+                  className="absolute top-0 h-full w-20"
+                  style={{
+                    background:
+                      "radial-gradient(circle, #fff200 0%, transparent 70%)",
+                    animation: "glowMove 2s infinite linear",
+                  }}
+                ></div>
+
+                <style>
+                  {`
+            @keyframes glowMove {
+              0% { left: -80px; opacity: 0; }
+              50% { opacity: 1; }
+              100% { left: 100%; opacity: 0; }
+            }
+          `}
+                </style>
+              </div>
+
+              {/* Progress Description */}
+              <p className="text-gray-300 text-sm sm:text-base">
+                Rs. {liveTotal.toLocaleString()} raised — goal: Rs. 20 Crore
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/*PackageCards*/}
+        <hr />
+        <div ref={packageRef}>
+          <PackagesCards />
         </div>
-      </section>
 
-      {/*PackageCards*/}
-      <hr />
-      <div ref={packageRef}>
-        <PackagesCards />
+        {/* Calculator */}
+        <hr />
+        <InvestmentCalculator />
+
+        <hr />
+
+        {/* Trust Badges */}
+        <Footers />
       </div>
-
-      {/* Calculator */}
-      <hr />
-      <InvestmentCalculator />
-
-      <hr />
-
-      {/* Trust Badges */}
-      <Footers />
-    </div>
+    </>
   );
 }

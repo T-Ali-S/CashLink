@@ -86,7 +86,7 @@ navigate(data.role === "admin" ? "/admin" : "/");
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 flex items-center justify-center px-4">
+    <div className="min-h-screen w-full  flex items-center justify-center px-4">
       {alert.visible && (
         <Alert
           type={alert.type}
@@ -95,7 +95,7 @@ navigate(data.role === "admin" ? "/admin" : "/");
         />
       )}
       <div className="bg-white rounded-xl w-full max-w-md p-6 sm:p-10 shadow-lg">
-        <h2 className="text-3xl sm:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-6">
+        <h2 className="text-4xl  sm:text-5xl font-bold text-center  bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent mb-6">
           Sign-In
         </h2>
 
@@ -152,7 +152,7 @@ navigate(data.role === "admin" ? "/admin" : "/");
             className={`${
               loading
                 ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-400"
+                : "bg-gold200 hover:bg-yellow-400"
             } text-white text-lg py-2 rounded-lg transition-transform active:scale-95`}
           >
             {loading ? "Logging in..." : "Submit"}

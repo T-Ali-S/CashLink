@@ -32,8 +32,8 @@ export default function InvestmentCalculator() {
   };
 
   return (
-    <section className="min-h-screen w-full flex flex-col justify-center items-center  px-4 py-12 md:-mt-36 md:-mb-36">
-      <h2 className="text-3xl sm:text-4xl font-bold text-gold100 text-center mb-6">
+    <section className="min-h-screen w-full flex flex-col justify-center items-center  px-4 py-12 mb-5">
+      <h2 className="text-3xl sm:text-4xl font-bold mb-12 bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent text-center ">
         Investment Calculator
       </h2>
 

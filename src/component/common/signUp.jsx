@@ -14,7 +14,6 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [enteredCode, setEnteredCode] = useState("");
   const [searchParams] = useSearchParams();
-  const [passwordTouched, setPasswordTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const { setUserData } = useContext(UserContext);
   const navigate = useNavigate();
@@ -29,7 +28,8 @@ export default function Signup() {
     "/avatars/avatar6.png",
     "/avatars/avatar7.png",
   ];
-  const randomAvatar = availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
+  const randomAvatar =
+    availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 
   const [alert, setAlert] = useState({
     visible: false,
@@ -46,17 +46,6 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const passwordRegex = /^(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]).{7,}$/;
-    if (!passwordRegex.test(password)) {
-      setAlert({
-        visible: true,
-        type: "error",
-        message: "Password must be at least 7 characters and include one special character.",
-      });
-      setLoading(false);
-      return;
-    }
 
     try {
       const usersSnap = await get(ref(db, "users"));
@@ -80,7 +69,11 @@ export default function Signup() {
         return;
       }
 
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const user = userCredential.user;
       const uid = user.uid;
 
@@ -146,7 +139,7 @@ export default function Signup() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 flex items-center justify-center px-4">
+    <div className="min-h-screen w-full  flex items-center justify-center px-4">
       {alert.visible && (
         <Alert
           type={alert.type}
@@ -155,7 +148,7 @@ export default function Signup() {
         />
       )}
       <div className="bg-white rounded-xl w-full max-w-md p-6 sm:p-10 shadow-lg">
-        <h2 className="text-3xl sm:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-6">
+        <h2 className="text-3xl sm:text-5xl font-bold text-center bg-gradient-to-br from-[#FFD700] via-[#F5C842] to-[#B8860B] bg-clip-text text-transparent mb-6">
           Sign-Up
         </h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -179,7 +172,6 @@ export default function Signup() {
           />
           <input
             className="pl-3 pt-2 pb-2 text-black rounded-md border-2"
-            onFocus={() => setPasswordTouched(true)}
             onChange={(e) => setPassword(e.target.value)}
             value={password}
             type={showPassword ? "text" : "password"}
@@ -187,11 +179,6 @@ export default function Signup() {
             placeholder="Enter Password"
             required
           />
-          {passwordTouched && (
-            <p className="text-sm text-red-500">
-              Password must be at least 7 characters and include one special character.
-            </p>
-          )}
           <input
             className="pl-3 pt-2 pb-2 text-black rounded-md border-2"
             value={enteredCode}

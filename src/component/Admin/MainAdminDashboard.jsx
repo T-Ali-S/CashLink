@@ -63,13 +63,13 @@ export default function MainAdminDashboard() {
       for (const uid in data) {
         const user = data[uid];
         const pkg = user?.package?.toLowerCase(); // safely handle undefined
-        console.log(`🧾 User ${uid} has package: ${pkg}`);
+        // console.log(`🧾 User ${uid} has package: ${pkg}`);
         if (pkg && counts.hasOwnProperty(pkg)) {
           counts[pkg]++;
         }
       }
 
-      console.log("📊 Count result:", counts);
+      // console.log("📊 Count result:", counts);
       setUserCounts(counts); // <-- this is the correct function
     };
 
@@ -187,7 +187,7 @@ export default function MainAdminDashboard() {
       let bonusSum = 0;
 
       Object.entries(users).forEach(([uid, user]) => {
-        console.log(`🧾 User ${uid} has package:`, user.package);
+        // console.log(`🧾 User ${uid} has package:`, user.package);
 
         if (user.package) {
           active++;
@@ -200,13 +200,13 @@ export default function MainAdminDashboard() {
         bonusSum += user.bonusWithdrawable || 0;
       });
 
-      console.log("📊 Count result:", {
-        bronze,
-        silver,
-        gold,
-        platinum,
-        elite,
-      });
+      // console.log("📊 Count result:", {
+      //   bronze,
+      //   silver,
+      //   gold,
+      //   platinum,
+      //   elite,
+      // });
 
       setActiveUsers(active);
       setUserCounts({ bronze, silver, gold, platinum, elite });
