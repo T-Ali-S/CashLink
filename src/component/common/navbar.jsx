@@ -136,11 +136,11 @@ export default function Navbar({ userData }) {
             About
           </Link> */}
           <Link to="/#packages" className="hover:text-gold200 transition">
-            Plan
+            Our Plans
           </Link>
 
           <button onClick={handleContactClick} className="hover:text-gold200">
-            Contact
+            Contact Us
           </button>
         </div>
 
@@ -277,13 +277,13 @@ export default function Navbar({ userData }) {
             About
           </Link> */}
           <Link to="/#packages" className="hover:text-gray-300">
-            Plan
+            Our Plans
           </Link>
           <button
             onClick={handleContactClick}
             className="hover:text-gray-300 text-left"
           >
-            Contact
+            Contact Us
           </button>
 
           {userData ? (

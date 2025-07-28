@@ -39,21 +39,21 @@ export async function applyDailyROI(uid) {
   const oneDay = 24 * 60 * 60 * 1000;
 
   if (now - last < oneDay) {
-    console.log(`⏱️ ROI already applied within 24h for ${uid}`);
+    // console.log(`⏱️ ROI already applied within 24h for ${uid}`);
     return null;
   }
 
   const maxCap = roiCap[pkg];
   const nextBalance = (userData.balance || 0) + dailyAmount;
   if (nextBalance > maxCap) {
-    console.log(`💰 Cap reached for ${uid}, skipping ROI`);
+    // console.log(`💰 Cap reached for ${uid}, skipping ROI`);
     return null;
   }
 
   // Firebase Transaction
   await runTransaction(userRef, (data) => {
     if (!data) {
-      console.warn(`⛔ runTransaction found no data for ${uid}`);
+      // console.warn(`⛔ runTransaction found no data for ${uid}`);
       return data;
     }
 
@@ -61,7 +61,7 @@ export async function applyDailyROI(uid) {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     if (now - last < oneDay) {
-      console.log(`⏱️ Duplicate ROI block inside transaction for ${uid}`);
+      // console.log(`⏱️ Duplicate ROI block inside transaction for ${uid}`);
       return data;
     }
 
@@ -101,7 +101,7 @@ export async function applyDailyROI(uid) {
 
   const postSnapshot = await get(userRef);
   const postData = postSnapshot.val();
-  console.log("📬 Post-transaction user data:", postData);
-  console.log(`✅ Daily ROI added for ${uid}: Rs. ${dailyAmount}`);
+  // console.log("📬 Post-transaction user data:", postData);
+  // console.log(`✅ Daily ROI added for ${uid}: Rs. ${dailyAmount}`);
   return dailyAmount;
 }

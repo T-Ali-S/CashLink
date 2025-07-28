@@ -33,6 +33,7 @@ export default function Home() {
     (userData?.balance || 0) +
     (userData?.bonusLocked || 0) +
     (userData?.bonusWithdrawable || 0);
+  const [activeMilestone, setActiveMilestone] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -67,13 +68,13 @@ export default function Home() {
         ref(db, `users/${currentUser.uid}/milestones/${userData?.package}`)
       );
       if (milestoneSnap.exists()) {
-        console.log("📦 Refreshed Milestone Snapshot:", milestoneSnap.val());
+        // console.log("📦 Refreshed Milestone Snapshot:", milestoneSnap.val());
       }
 
       const snap = await get(ref(db, `users/${currentUser.uid}`));
       if (snap.exists()) {
         const fresh = snap.val();
-        console.log("🧾 Latest user snapshot from Firebase:", fresh);
+        // console.log("🧾 Latest user snapshot from Firebase:", fresh);
         setUserData({ ...fresh, uid: currentUser.uid });
       }
     }
@@ -107,17 +108,28 @@ export default function Home() {
   //   }, [milestone.deadline]);
   // console.log(milestone.deadline);
 
+  useEffect(() => {
+    async function fetchMilestone() {
+      if (userData?.uid && userData?.package) {
+        const latest = await useMilestoneStatus(userData.uid, userData.package);
+        setActiveMilestone(latest);
+      }
+    }
+    fetchMilestone();
+  }, [userData?.uid, userData?.package]);
+
   const now = Date.now();
   const deadline = milestone?.deadline;
   const timeLeft = deadline - now;
   const daysLeft = Math.max(Math.floor(timeLeft / (1000 * 60 * 60 * 24)), 0);
+
   return (
     <>
       {/* Slider section - full width, no side padding */}
       {/* Desktop & Tablet Slider */}
       <section className="w-full relative hidden md:block mt-20">
         <div className="w-full px-4 lg:px-8">
-          <div className="h-[320px] lg:h-[650px] xl:h-[780px] overflow-hidden bg-black border border-gold-500 rounded-2xl shadow-md">
+          <div className="h-[320px] md:h-[400px] lg:h-[650px] xl:h-[780px] overflow-hidden bg-black border border-gold-500 rounded-2xl shadow-md">
             <Swiper
               modules={[Autoplay, Pagination, EffectFade]}
               autoplay={{ delay: 4000 }}
@@ -204,7 +216,7 @@ export default function Home() {
                       Your Balance
                     </h3>
                     <p className="text-3xl font-bold mt-2">
-                      Rs. {userData?.balance || 0}  
+                      Rs. {userData?.balance || 0}
                       <button
                         onClick={async () => {
                           const user = auth.currentUser;
@@ -227,8 +239,8 @@ export default function Home() {
                     {/* show lockedBonus separately below balance */}
                     {milestone?.lockedBonus > 0 && (
                       <p className="text-sm text-yellow-300 mt-1">
-                        + ₹{milestone.lockedBonus} referral bonus (locked until
-                        milestone completion)
+                        + Rs. {milestone.lockedBonus} referral bonus (locked
+                        until milestone completion)
                       </p>
                     )}
 
@@ -268,8 +280,6 @@ export default function Home() {
                                 </b>
                                 {milestone.referralsNeeded !== 1 && " "}
                                 <br />
-                                {/* {milestone.timeLeft !== null &&
-                                  ` (Expires in: ${milestone.timeLeft} days)`} */}
                                 <p>
                                   {" "}
                                   Expires in:{" "}
@@ -283,17 +293,7 @@ export default function Home() {
                             )}
                           </div>
                         )}
-                        {/* Rs.{" "} */}
-                        {/* {milestone.lockedBonus ||
-                          userData?.bonusWithdrawable ||
-                          0}{" "}
-                        is pending until your milestone is completed. */}
-                        {/* {milestone?.lockedBonus > 0 && (
-                        <p className="text-sm text-yellow-300 mt-1">
-                          + ₹{milestone.lockedBonus} referral bonus (locked
-                          until milestone completion)
-                        </p>
-                      )} */}
+              
                       </div>
                     </div>
                   </div>

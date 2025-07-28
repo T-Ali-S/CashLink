@@ -154,6 +154,8 @@ export default function Profile() {
             "/avatars/avatar5.png",
             "/avatars/avatar6.png",
             "/avatars/avatar7.png",
+            "/avatars/avatar8.png",
+            "/avatars/avatar11.png",
           ]}
           selected={selectedAvatar}
           onSelect={setSelectedAvatar}

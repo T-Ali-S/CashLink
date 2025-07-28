@@ -45,30 +45,18 @@ export default function StartWithNothing() {
       const reconsumable = [];
       const remainingRefs = [];
 
-      console.log("📦 Current package tier:", currentTier);
-      console.log("🔁 All referrals:", allReferrals.map((r) => r.uid));
-      console.log("🚫 All used (start + package):", [...allUsed]);
-      console.log("📄 usedStartRefs before reconsume logic:", usedStartRefs);
-
       allReferrals.forEach((ref) => {
         const refTierIndex = packageOrder.indexOf(ref.package);
         const isUsedInPackage = usedPackageRefs.includes(ref.uid);
         const isUsedInStart = usedStartRefs.includes(ref.uid);
 
-        if (!isUsedInPackage && refTierIndex >= packageTierIndex) {
-          reconsumable.push(ref.uid);
-        } else if (!isUsedInStart && !isUsedInPackage) {
+        if (!isUsedInStart && !isUsedInPackage) {
           remainingRefs.push(ref);
         }
       });
 
-      console.log("✅ Reconsumable referrals to migrate:", reconsumable);
-      console.log(
-        "🆕 Remaining valid referrals for StartWithNothing:",
-        remainingRefs.map((r) => r.uid)
-      );
-
-      if (reconsumable.length > 0) {
+      // Apply reconsumable logic if not yet used in milestone
+      if (reconsumable.length > 0 && currentTier) {
         const updatedUsedReferrals = { ...userInfo.usedReferrals };
         for (const pkg in updatedUsedReferrals) {
           updatedUsedReferrals[pkg] = updatedUsedReferrals[pkg].filter(

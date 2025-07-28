@@ -136,7 +136,7 @@ export default function ManageUser() {
     const eliteLocked = selected === "elite";
 
     const newBalance = (userData.balance || 0) + firstReward;
-    const newWithdrawable = firstReward;
+    const newWithdrawable = (userData.withdrawable || 0) + firstReward;
 
     const milestoneUpdatePayload = {
       package: selected,
