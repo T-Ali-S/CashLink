@@ -31,6 +31,9 @@ import LiveChatBox from "./component/common/LiveChatBox";
 import { UserContext } from "./component/Others/UserContext";
 import MainAdminDashboard from "./component/Admin/MainAdminDashboard";
 import { AdminTabProvider } from "./component/context/AdminTabContext";
+import AboutUs from "./component/common/AboutUs";
+import PrivPolicy from "./component/common/privPolicy";
+import Terms from "./component/common/TermandCond";
 
 
 function App() {
@@ -191,6 +194,36 @@ function App() {
         <>
           <WithNavbar>
             <TransactionLog />
+          </WithNavbar>
+        </>
+      ),
+    },
+    {
+      path: "/aboutus",
+      element: (
+        <>
+          <WithNavbar>
+            < AboutUs />
+          </WithNavbar>
+        </>
+      ),
+    },
+    {
+      path: "/privPolicy",
+      element: (
+        <>
+          <WithNavbar>
+            < PrivPolicy />
+          </WithNavbar>
+        </>
+      ),
+    },
+    {
+      path: "/terms",
+      element: (
+        <>
+          <WithNavbar>
+            < Terms />
           </WithNavbar>
         </>
       ),

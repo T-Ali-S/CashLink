@@ -125,7 +125,7 @@ export default function PackagesCards() {
           icon="/Medals/Bronze.png"
           amount={3000}
           nextDay={10}
-          refer={3}
+          refer={5}
           total={6300}
           onClick={() => navigate("/contact?mode=package")}
         />
@@ -152,7 +152,7 @@ export default function PackagesCards() {
           icon="/Medals/Platinum.png"
           amount={50000}
           nextDay={10}
-          refer={1}
+          refer={2}
           total={"105000"}
           onClick={() => navigate("/contact?mode=package")}
         />
@@ -163,7 +163,7 @@ export default function PackagesCards() {
           tier="Elite"
           icon="/Medals/Elite.png"
           amount={100000}
-          daily={5}
+          daily={1}
           onClick={() => navigate("/contact?mode=package")}
         />
       </div>

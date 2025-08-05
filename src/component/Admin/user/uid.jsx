@@ -32,10 +32,12 @@ export default function ManageUser() {
     const fetchUser = async () => {
       const snapshot = await get(ref(db, `users/${uid}`));
       await expireMilestoneIfOverdue(uid);
+
       if (snapshot.exists()) {
         const data = snapshot.val();
         setUserInfo(data);
         setSelectedPackage(data.package || "");
+        console.log("🆕 Selected package from DB:", data.package);
 
         if (data.referredBy) {
           const referrerSnap = await get(ref(db, `users/${data.referredBy}`));
@@ -78,6 +80,14 @@ export default function ManageUser() {
     }
 
     console.log("📣 Notifications sent to all users.");
+  };
+
+  const goalReferrals = {
+    bronze: 2,
+    silver: 3,
+    gold: 4,
+    platinum: 5,
+    elite: 5,
   };
 
   const assignPackage = async () => {
@@ -123,7 +133,7 @@ export default function ManageUser() {
     const deadline = Date.now() + duration * 24 * 60 * 60 * 1000;
 
     const updatedMilestone = {
-      goal: null,
+      // goal: goalReferrals[selected],
       earned: 0,
       rewarded: false,
       deadline,
@@ -138,6 +148,14 @@ export default function ManageUser() {
     const newBalance = (userData.balance || 0) + firstReward;
     const newWithdrawable = (userData.withdrawable || 0) + firstReward;
 
+    /////updated start for Elite logic
+    const updatedROITracker = {
+      ...(userData.roiTracker || {}),
+      [selected]: 0,
+    };
+    /////updated end for Elite logic
+
+
     const milestoneUpdatePayload = {
       package: selected,
       balance: newBalance,
@@ -147,6 +165,7 @@ export default function ManageUser() {
       eliteLocked,
       lastPayoutAt: Date.now(),
       currentPackageROI: selected === "elite" ? 0 : firstReward, // ⬅️ Track ROI here
+      roiTracker: updatedROITracker,
       milestones: {
         ...userData.milestones,
         [selected]: updatedMilestone,

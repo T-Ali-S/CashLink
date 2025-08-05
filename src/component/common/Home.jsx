@@ -14,6 +14,7 @@ import useMilestoneStatus from "../Others/hooks/useMilestoneStatus";
 import { getLiveTrackerTotal } from "../utils/liveTrackerUtils";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, EffectFade } from "swiper/modules";
+import { calculateEarnedReferrals } from "../utils/milestoneManager";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
@@ -22,9 +23,6 @@ export default function Home() {
   const [userData, setUserData] = useState(null);
   const totalWithdrawable = userData?.withdrawable || 0;
   const milestone = useMilestoneStatus(userData?.uid, userData?.package);
-  //  console.log("🧾 milestone lockedBonus:", milestone?.lockedBonus);
-  // console.log("🧾 milestone object:", milestone);
-  // console.log("🧾 userData.package:", userData?.package);
   const [liveTotal, setLiveTotal] = useState(150000000);
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,6 +32,9 @@ export default function Home() {
     (userData?.bonusLocked || 0) +
     (userData?.bonusWithdrawable || 0);
   const [activeMilestone, setActiveMilestone] = useState(null);
+  const [earnedReferrals, setEarnedReferrals] = useState(0);
+  const [referralsNeeded, setReferralsNeeded] = useState(0);
+  const [roiCountdown, setRoiCountdown] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -91,32 +92,99 @@ export default function Home() {
     }
   }, [location]);
 
+  //////update
+  // useEffect(() => {
+  //   const fetchLiveTotal = async () => {
+  //     const total = await getLiveTrackerTotal();
+  //     setLiveTotal(total);
+  //   };
+  //   fetchLiveTotal();
+  // }, []);
   useEffect(() => {
     const fetchLiveTotal = async () => {
+      if (!auth.currentUser) return; // Guard after logout
       const total = await getLiveTrackerTotal();
       setLiveTotal(total);
     };
+
     fetchLiveTotal();
   }, []);
 
-  //  useEffect(() => {
-  //     const interval = setInterval(() => {
-  //       // recompute timeLeft
-  //     }, 6000); // every minute
+  /////1 updatestart
+  const currPkgRefer = {
+    bronze: 5,
+    silver: 3,
+    gold: 2,
+    platinum: 2,
+    elite: 1,
+  };
+  const FinalrefNeed = 0;
 
-  //     return () => clearInterval(interval);
-  //   }, [milestone.deadline]);
-  // console.log(milestone.deadline);
+  /////1 updateEnd
 
+  /////2 updatestart
+  // useEffect(() => {
+  //   if (userData?.uid && userData?.package && milestone?.earned !== undefined) {
+  //     console.log(
+  //       `📊 Referral earned for ${userData.package.toUpperCase()}:`,
+  //       milestone.earned
+  //     );
+  //     // console.log(`Referral Needed ${FinalrefNeed}:`);
+
+  //   }
+  // }, [milestone?.earned, userData?.package, userData?.uid]);
+  /////2 updateEnd
+  //////3 updatestart
   useEffect(() => {
-    async function fetchMilestone() {
-      if (userData?.uid && userData?.package) {
-        const latest = await useMilestoneStatus(userData.uid, userData.package);
-        setActiveMilestone(latest);
-      }
+    async function logEarnedReferrals() {
+      if (!userData?.uid || !userData?.package) return;
+
+      const { earned, validRefUIDs } = await calculateEarnedReferrals(
+        userData.uid,
+        userData.package
+      );
+      const needed = Math.max(
+        0,
+        (currPkgRefer[userData.package] || 0) - earned
+      );
+
+      console.log(
+        `📊 Referral earned for ${userData.package.toUpperCase()}: ${earned}`
+      );
+      console.log(`🔢 Referral Needed: ${needed}`);
+      console.log(`👥 Valid referrals:`, validRefUIDs);
+
+      setEarnedReferrals(earned);
+      setReferralsNeeded(needed);
     }
-    fetchMilestone();
+
+    logEarnedReferrals();
   }, [userData?.uid, userData?.package]);
+  //////3 updateEnd
+  /////4update start Roi time
+  useEffect(() => {
+    if (!userData?.lastPayoutAt) return;
+
+    const interval = setInterval(() => {
+      const oneDay = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const nextROI = (userData.lastPayoutAt || 0) + oneDay;
+      const msLeft = nextROI - now;
+
+      if (msLeft <= 0) {
+        setRoiCountdown("Ready Now");
+      } else {
+        const hrs = Math.floor(msLeft / (1000 * 60 * 60));
+        const mins = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((msLeft % (1000 * 60)) / 1000);
+        setRoiCountdown(`${hrs}h ${mins}m ${secs}s`);
+      }
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval);
+  }, [userData?.lastPayoutAt]);
+
+  /////4update end Roi time
 
   const now = Date.now();
   const deadline = milestone?.deadline;
@@ -128,8 +196,8 @@ export default function Home() {
       {/* Slider section - full width, no side padding */}
       {/* Desktop & Tablet Slider */}
       <section className="w-full relative hidden md:block mt-20">
-        <div className="w-full px-4 lg:px-8">
-          <div className="h-[320px] md:h-[400px] lg:h-[650px] xl:h-[780px] overflow-hidden bg-black border border-gold-500 rounded-2xl shadow-md">
+        <div className="w-full px-6 lg:px-8">
+          <div className="h-[320px] md:h-[400px] lg:h-[580px] xl:h-[750px] 2xl:h-[970px] overflow-hidden bg-black border border-gold-500 rounded-2xl shadow-md">
             <Swiper
               modules={[Autoplay, Pagination, EffectFade]}
               autoplay={{ delay: 4000 }}
@@ -239,8 +307,8 @@ export default function Home() {
                     {/* show lockedBonus separately below balance */}
                     {milestone?.lockedBonus > 0 && (
                       <p className="text-sm text-yellow-300 mt-1">
-                        + Rs. {milestone.lockedBonus} referral bonus (locked
-                        until milestone completion)
+                        Rs. {milestone.lockedBonus} referral bonus (locked until
+                        milestone completion)
                       </p>
                     )}
 
@@ -274,13 +342,30 @@ export default function Home() {
                             <br />
                             {!milestone.rewarded && !milestone.expired && (
                               <div className="mb-2">
-                                Referrals needed:{" "}
-                                <b className="mb-2">
-                                  {milestone.referralsNeeded}
-                                </b>
-                                {milestone.referralsNeeded !== 1 && " "}
+
+                                <div className=" ">
+                                  Referrals needed:{" "}
+                                  <b className="mb-2">
+                                   
+                                    {referralsNeeded}
+                                  </b>
+                                 
+                                </div>
+
                                 <br />
-                                <p>
+                                {/* 1 update start  */}
+                                {userData.package &&
+                                  milestone?.earned !== undefined && (
+                                    <p className="text-sm text-white -mt-5">
+                                      Referrals Earned:{" "}
+                                      <span className="font-semibold text-yellow-400">
+                                        {earnedReferrals}
+                                      </span>
+                                    </p>
+                                  )}
+                                <br />
+                                {/* 1 update End  */}
+                                <p className="-mt-3">
                                   {" "}
                                   Expires in:{" "}
                                   {daysLeft > 0
@@ -289,11 +374,18 @@ export default function Home() {
                                       } days`
                                     : "Deadline passed"}{" "}
                                 </p>
+                                {roiCountdown && (
+                                  <p className="text-sm text-gray-300 mt-0">
+                                    Next ROI in:{" "}
+                                    <span className="text-white font-semibold">
+                                      {roiCountdown}
+                                    </span>
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
                         )}
-              
                       </div>
                     </div>
                   </div>

@@ -22,7 +22,7 @@ export default function InvestmentCalculator() {
         total = 105000;
         break;
       case "100000":
-        total = 200000; // 5% daily simple example
+        total = 150000; // 5% daily simple example
         break;
       default:
         total = 0;
@@ -46,7 +46,7 @@ export default function InvestmentCalculator() {
         </p>
         <p className="text-white text-lg mb-3">
           📈 Our packages offer up to{" "}
-          <span className="font-semibold">210% returns</span> — calculated in
+          <span className="font-semibold">110% returns</span> — calculated in
           real-time.
         </p>
         <p className="text-white text-lg">

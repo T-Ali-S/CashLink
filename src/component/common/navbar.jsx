@@ -229,7 +229,7 @@ export default function Navbar({ userData }) {
                       💬 Inbox
                     </Link>
 
-                    {userData?.role === "admin" && (
+                    {/* {userData?.role === "admin" && (
                       <>
                         <Link
                           to="/admin/users"
@@ -244,7 +244,7 @@ export default function Navbar({ userData }) {
                           Distribute Bonuses
                         </Link>
                       </>
-                    )}
+                    )} */}
                   </div>
 
                   <button
@@ -295,7 +295,7 @@ export default function Navbar({ userData }) {
                     
                     <Link
                   to="/admin"
-                  className=" py-1 text-sm w-full text-left  text-gold200 hover:text-white"
+                  className=" py-1 text-sm w-full text-left  text-gold200 hover:text-white "
                 >
                   📊 Dashboard
                 </Link>
@@ -327,7 +327,7 @@ export default function Navbar({ userData }) {
                 <Link to="/chat" className="block py-1 hover:text-yellow-600 ">
                   💬 Inbox
                 </Link>
-                {userData?.role === "admin" && (
+                {/* {userData?.role === "admin" && (
                   <>
                     <Link
                       to="/admin/users"
@@ -342,7 +342,7 @@ export default function Navbar({ userData }) {
                       Distribute Bonuses
                     </Link>
                   </>
-                )}
+                )} */}
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"

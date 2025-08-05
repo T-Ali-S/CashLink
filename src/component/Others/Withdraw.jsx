@@ -181,12 +181,14 @@ export default function Withdraw() {
               className="w-full bg-gray-800 p-2 rounded"
             />
           </div>
-          <button
+          <div className="text-center">
+            <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-semibold"
+            className="bg-gold200  hover:bg-yellow-500 text-white px-4 py-2 rounded font-semibold"
           >
             Submit Request
           </button>
+          </div>
         </form>
       </div>
     </AdminLayout>

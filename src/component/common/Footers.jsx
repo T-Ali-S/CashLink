@@ -1,4 +1,4 @@
-import {React, useEffect, useState} from "react";
+import { React, useEffect, useState } from "react";
 import { MdOutlinePayment, MdDomainVerification } from "react-icons/md";
 import { BiSupport } from "react-icons/bi";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
@@ -34,10 +34,15 @@ export default function Footers() {
             A secure, verified and responsive reward system built for
             performance, transparency, and user satisfaction.
           </p>
-          <div className="flex gap-3 mt-3">
+          <Link
+            className="flex gap-3 mt-3"
+            to="https://web.facebook.com/profile.php?id=61552686513404"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <FaFacebookF className="w-5 h-5 hover:text-blue-500 cursor-pointer" />
-            <FaInstagram className="w-5 h-5 hover:text-pink-500 cursor-pointer" />
-          </div>
+            {/* <FaInstagram className="w-5 h-5 hover:text-pink-500 cursor-pointer" /> */}
+          </Link>
         </div>
 
         {/* Base Navigation */}
@@ -56,7 +61,8 @@ export default function Footers() {
               <Link to="#">Account Login</Link>
             </li>
             <li>
-              <Link to="/contact?mode=contact">Contact</Link>
+              <Link to="/chat">Contact</Link>
+              {/* <Link to="/contact?mode=contact">Contact</Link> */}
             </li>
           </ul>
         </div>
@@ -68,7 +74,7 @@ export default function Footers() {
           </h3>
           <ul className="space-y-2 text-gray-300">
             <li>
-              <a href="#">Privacy</a>
+              <Link to="/privPolicy">Privacy</Link>
             </li>
             <li>
               <a href="#">Ranking</a>
@@ -87,10 +93,10 @@ export default function Footers() {
           <h3 className="text-yellow-400 text-lg font-bold mb-2">Company</h3>
           <ul className="space-y-2 text-gray-300">
             <li>
-              <a href="#">About</a>
+              <a href="/aboutus">About</a>
             </li>
             <li>
-              <a href="#">Terms & Conditions</a>
+              <Link to="/terms">Terms & Conditions</Link>
             </li>
           </ul>
         </div>
@@ -121,8 +127,6 @@ export default function Footers() {
           ↑
         </button>
       )}
-
-
     </footer>
   );
 }

@@ -4,7 +4,7 @@ import { ref, set, get } from "firebase/database";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import Alert from "./Alert";
-import { sendNotification } from "../utils/sendNotification";
+// import { sendNotification } from "../utils/sendNotification"; // Keep commented out for now
 import { UserContext } from "../Others/UserContext";
 
 export default function Signup() {
@@ -48,47 +48,57 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const usersSnap = await get(ref(db, "users"));
-      const allUsers = usersSnap.exists() ? usersSnap.val() : {};
-      const matchedReferrer = Object.entries(allUsers).find(
-        ([_, u]) => u.referralCode === enteredCode
-      );
-      const matchedReferrerUid = matchedReferrer ? matchedReferrer[0] : null;
-
-      const existingNames = usersSnap.exists()
-        ? Object.values(allUsers).map((user) => user.name.toLowerCase())
-        : [];
-
-      if (existingNames.includes(name.toLowerCase())) {
-        setAlert({
-          visible: true,
-          type: "error",
-          message: "Username already exists. Please choose another.",
-        });
-        setLoading(false);
-        return;
-      }
-
+      // 1. *** Start with Firebase Authentication ***
+      // This is the first step that establishes the user's authenticated state.
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
       const user = userCredential.user;
-      const uid = user.uid;
+      const uid = userCredential.user.uid; // Get the UID from the newly created user
 
+      // Update Firebase Auth profile (displayName and photoURL)
       await updateProfile(user, {
         displayName: name,
         photoURL: randomAvatar,
       });
 
+      // 2. *** NOW, with the user authenticated, perform Realtime Database reads ***
+      // This `get` operation will now be allowed by your `.read": "auth != null"` rule.
+      const usersSnap = await get(ref(db, "users"));
+      const allUsers = usersSnap.exists() ? usersSnap.val() : {};
+
+      const existingNames = usersSnap.exists()
+        ? Object.values(allUsers).map((u) => u.name.toLowerCase())
+        : [];
+
+      if (existingNames.includes(name.toLowerCase())) {
+        // If username exists, we need to clean up the Firebase Auth user that was just created
+        await user.delete(); // IMPORTANT: Deletes the Firebase Auth user if the name is taken
+        setAlert({
+          visible: true,
+          type: "error",
+          message: "Username already exists. Please choose another.",
+        });
+        setLoading(false);
+        return; // Stop the function here
+      }
+
+      const matchedReferrer = Object.entries(allUsers).find(
+        ([_, u]) => u.referralCode === enteredCode
+      );
+      const matchedReferrerUid = matchedReferrer ? matchedReferrer[0] : null;
+
+      // 3. *** Write the new user's data to Realtime Database ***
+      // This `set` operation will now be allowed by your `users/$uid` write rules.
       await set(ref(db, `users/${uid}`), {
         name,
         email,
         referralCode: generateReferralCode(name),
         referredBy: matchedReferrerUid || null,
-        balance: 0,
-        package: null,
+        // balance: 0, // Keep these commented out, as they require admin privileges to write
+        // package: null,
         avatarUrl: randomAvatar,
         role: "user",
         createdAt: new Date().toISOString(),
@@ -96,13 +106,14 @@ export default function Signup() {
         name_slug: name.toLowerCase().replace(/\s+/g, "-"),
       });
 
-      if (matchedReferrerUid) {
-        await sendNotification(
-          matchedReferrerUid,
-          "🎉 You referred a new user!",
-          `${name} just signed up using your referral code.`
-        );
-      }
+      // You can re-enable sendNotification after you implement it via Cloud Functions
+      // if (matchedReferrerUid) {
+      //   await sendNotification(
+      //     matchedReferrerUid,
+      //     "🎉 You referred a new user!",
+      //     `${name} just signed up using your referral code.`
+      //   );
+      // }
 
       setUserData({
         name,
@@ -120,6 +131,7 @@ export default function Signup() {
 
       setTimeout(() => navigate("/"), 2000);
     } catch (err) {
+      console.error("Signup error:", err); // Log the full error object for debugging
       setAlert({
         visible: true,
         type: "error",
@@ -136,7 +148,7 @@ export default function Signup() {
   useEffect(() => {
     const refCode = searchParams.get("ref");
     if (refCode) setEnteredCode(refCode);
-  }, []);
+  }, [searchParams]); // Added searchParams to dependency array for useEffect
 
   return (
     <div className="min-h-screen w-full  flex items-center justify-center px-4">

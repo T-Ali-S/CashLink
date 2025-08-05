@@ -13,7 +13,6 @@ export default function AdminChatManager() {
   const bottomRef = useRef(null);
   const { setUnreadCount } = useChat();
 
-
   // Load chats
   useEffect(() => {
     return onValue(ref(db, "chats"), (snap) => {
@@ -88,30 +87,29 @@ export default function AdminChatManager() {
   });
 
   useEffect(() => {
-  bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-}, [chats[selectedUser]]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chats[selectedUser]]);
 
-useEffect(() => {
-  return onValue(ref(db, "chats"), (snap) => {
-    if (snap.exists()) {
-      const chatData = snap.val();
-      setChats(chatData);
+  useEffect(() => {
+    return onValue(ref(db, "chats"), (snap) => {
+      if (snap.exists()) {
+        const chatData = snap.val();
+        setChats(chatData);
 
-      let unread = 0;
-      Object.values(chatData).forEach((chatList) => {
-        Object.values(chatList).forEach((msg) => {
-          if (msg.from === "user" && msg.read === false) {
-            unread++;
-          }
+        let unread = 0;
+        Object.values(chatData).forEach((chatList) => {
+          Object.values(chatList).forEach((msg) => {
+            if (msg.from === "user" && msg.read === false) {
+              unread++;
+            }
+          });
         });
-      });
 
-      // console.log("📨 Unread from AdminChatManager:", unread);
-      setUnreadCount(unread);
-    }
-  });
-}, []);
-
+        // console.log("📨 Unread from AdminChatManager:", unread);
+        setUnreadCount(unread);
+      }
+    });
+  }, []);
 
   return (
     <div className="p-6 bg-gray-900 text-white h-screen overflow-hidden">
@@ -124,7 +122,9 @@ useEffect(() => {
             <ul className="space-y-2">
               {sortedUserIds.map((uid) => {
                 const chat = Object.values(chats[uid] || []);
-                const unread = chat.some((msg) => msg.from === "user" && !msg.read);
+                const unread = chat.some(
+                  (msg) => msg.from === "user" && !msg.read
+                );
 
                 return (
                   <li
@@ -140,11 +140,17 @@ useEffect(() => {
                       className="w-8 h-8 rounded-full border object-cover"
                     />
                     <div className="flex-1 truncate">
-                      <span className={`truncate max-w-[120px] ${unread ? "font-bold" : ""}`}>
+                      <span
+                        className={`truncate max-w-[120px] ${
+                          unread ? "font-bold" : ""
+                        }`}
+                      >
                         {usernames[uid]?.name || uid}
                       </span>
                     </div>
-                    {unread && <span className="h-2 w-2 bg-red-500 rounded-full" />}
+                    {unread && (
+                      <span className="h-2 w-2 bg-red-500 rounded-full" />
+                    )}
                   </li>
                 );
               })}
@@ -192,7 +198,22 @@ useEffect(() => {
                           : "bg-gray-300 text-black"
                       }`}
                     >
-                      {msg.content}
+                      {msg.type === "image" ? (
+                        <a
+                          href={msg.content}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img
+                            src={msg.content}
+                            alt="uploaded"
+                            className="max-w-full rounded-lg cursor-pointer hover:opacity-80 transition"
+                          />
+                        </a>
+                      ) : (
+                        msg.content
+                      )}
+
                       <div className="flex justify-between items-center text-xs mt-1 text-gray-300">
                         <span>
                           {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -200,7 +221,9 @@ useEffect(() => {
                             minute: "2-digit",
                           })}
                         </span>
-                        {msg.from === "admin" && msg.read && <span className="ml-1">✓</span>}
+                        {msg.from === "admin" && msg.read && (
+                          <span className="ml-1">✓</span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -13,7 +13,7 @@ export async function processROIandUnlock(uid) {
 
   try {
     const roi = await applyDailyROI(uid);
-    // console.log(`🧮 Applied ROI for ${uid}: Rs. ${roi || 0}`);
+    console.log(`🧮 Applied ROI for ${uid}: Rs. ${roi || 0}`);
 
     const unlocked = await checkAndUnlockMilestone(uid);
     if (unlocked) {
@@ -25,6 +25,31 @@ export async function processROIandUnlock(uid) {
       //   `📊 Milestone not yet met for ${uid} at ${new Date().toLocaleString()}`
       // );
     }
+    /////updated Start
+    // ROI countdown
+    const oneDay = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const userRef = ref(db, `users/${uid}`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists()) {
+      const user = snapshot.val();
+      const lastROI = user.lastPayoutAt || 0;
+      const nextROI = lastROI + oneDay;
+
+      const msRemaining = nextROI - now;
+      if (msRemaining > 0) {
+        const hrs = Math.floor(msRemaining / (1000 * 60 * 60));
+        const mins = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+
+        console.log(`⏳ Next ROI for ${uid} in ${hrs}h ${mins}m ${secs}s`);
+      } else {
+        console.log(`⚠️ Next ROI for ${uid} is ready now`);
+      }
+    }
+
+    /////updated End
 
     return { roi, unlocked };
   } catch (error) {
@@ -784,19 +809,35 @@ async function finalizeMilestoneUnlock(
     usedPackageRefs: [...(user.usedPackageRefs || []), ...extraRefs],
   };
 
+  // if (elite) {
+  //   const currentBalance = user.balance || 0;
+  //   const initialCredit = milestone.initialCredit || 0;
+  //   const retroactiveROI = currentBalance - initialCredit;
+
+  //   console.log(`💎 Elite Milestone Unlock:`);
+  //   console.log(`   Balance: ${currentBalance}`);
+  //   console.log(`   Initial Credit: ${initialCredit}`);
+  //   console.log(`   Retroactive ROI unlocked: ${retroactiveROI}`);
+
+  // update start for ELite ROI
   if (elite) {
-    const currentBalance = user.balance || 0;
-    const initialCredit = milestone.initialCredit || 0;
-    const retroactiveROI = currentBalance - initialCredit;
+    const roi = user.roiTracker?.elite || 0;
+    const retroactiveROI = roi;
 
     console.log(`💎 Elite Milestone Unlock:`);
-    console.log(`   Balance: ${currentBalance}`);
-    console.log(`   Initial Credit: ${initialCredit}`);
+    console.log(`   ROI Tracked: ${roi}`);
     console.log(`   Retroactive ROI unlocked: ${retroactiveROI}`);
+
+    // update end for ELite ROI
 
     payload.withdrawable += retroactiveROI;
     payload.eliteLocked = false;
     payload[`milestones/${pkg}/roiInjectedAtUnlock`] = true;
+    payload.roiTracker = {
+      ...(user.roiTracker || {}),
+      elite: 0, // Reset elite tracker
+    };
+
 
     if (trackedROI >= roiCap.elite) {
       payload.currentPackageROI = 0;
@@ -806,8 +847,7 @@ async function finalizeMilestoneUnlock(
       console.log(`📈 Elite user still earning ROI.`);
     }
   } else {
-
-    payload.balance = (user.balance || 0) + remainingROIbalance ; // Already updated above
+    payload.balance = (user.balance || 0) + remainingROIbalance; // Already updated above
     payload.withdrawable += lockedROI + lockedBonus;
     payload.currentPackageROI = 0;
 
@@ -819,4 +859,52 @@ async function finalizeMilestoneUnlock(
 
   await update(userRef, payload);
   return true;
+}
+
+export async function calculateEarnedReferrals(uid, pkg) {
+  const userRef = ref(db, `users/${uid}`);
+  const snapshot = await get(userRef);
+  if (!snapshot.exists()) return { earned: 0, validRefUIDs: [] };
+
+  const user = snapshot.val();
+
+  const milestone = user.milestones?.[pkg] || {};
+  const previouslyConsumed = user.usedPackageRefs || [];
+  const startUsed = Object.values(user.usedReferrals || {}).flat();
+  const alreadyClaimed = new Set([...previouslyConsumed, ...startUsed]);
+
+  const tierOrder = ["bronze", "silver", "gold", "platinum", "elite"];
+  const referralQuotas = {
+    bronze: 5,
+    silver: 3,
+    gold: 2,
+    platinum: 2,
+    elite: 1,
+  };
+
+  const allUsersSnap = await get(ref(db, "users"));
+  const allUsers = allUsersSnap.exists() ? allUsersSnap.val() : {};
+
+  const referrals = Object.entries(allUsers)
+    .filter(([refId, u]) => u.referredBy === uid && u.package)
+    .map(([refId, u]) => ({ uid: refId, ...u }));
+
+  const quota = referralQuotas[pkg];
+  const userTierIdx = tierOrder.indexOf(pkg);
+
+  let earned = 0;
+  let validRefUIDs = [];
+
+  for (let ref of referrals) {
+    if (alreadyClaimed.has(ref.uid)) continue;
+
+    const refTierIdx = tierOrder.indexOf(ref.package);
+    if (refTierIdx < userTierIdx) continue;
+
+    earned++;
+    validRefUIDs.push(ref.uid);
+    if (earned >= quota) break;
+  }
+
+  return { earned, validRefUIDs };
 }
