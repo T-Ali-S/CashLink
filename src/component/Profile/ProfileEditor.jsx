@@ -51,17 +51,6 @@ export default function ProfileEditor({
             className="bg-gray-700 text-white p-2 rounded w-full outline-none focus:ring-2 focus:ring-yellow-500"
           />
         </div>
-        {/* <div>
-          <label className="text-sm text-gray-400 block mb-1">
-            Email Address
-          </label>
-          <input
-            type="email"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            className="bg-gray-700 text-white p-2 rounded w-full outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-        </div> */}
 
         {userData?.referralCode && (
           <div className="space-y-3">

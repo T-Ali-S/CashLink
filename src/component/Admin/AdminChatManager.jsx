@@ -105,7 +105,6 @@ export default function AdminChatManager() {
           });
         });
 
-        // console.log("📨 Unread from AdminChatManager:", unread);
         setUnreadCount(unread);
       }
     });

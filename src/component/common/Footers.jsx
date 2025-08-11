@@ -1,11 +1,26 @@
-import { React, useEffect, useState } from "react";
-import { MdOutlinePayment, MdDomainVerification } from "react-icons/md";
-import { BiSupport } from "react-icons/bi";
-import { FaFacebookF, FaInstagram } from "react-icons/fa";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { React, useEffect, useState, useContext } from "react";
+import { FaFacebookF } from "react-icons/fa";
+import { Link, useNavigate} from "react-router-dom";
+import { AlertContext } from "../context/AlertContext";
+import { auth } from "../../firebase";
 
 export default function Footers() {
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const { setAlert } = useContext(AlertContext);
+  const navigate = useNavigate();
+
+  const handleContClick = () => {
+    const user = auth.currentUser;
+        if (user) {
+          navigate("/chat");
+        } else {
+          setAlert({
+            visible: true,
+            type: "error",
+            message: "Please sign in to send message.",
+          });
+        }
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -61,7 +76,7 @@ export default function Footers() {
               <Link to="#">Account Login</Link>
             </li>
             <li>
-              <Link to="/chat">Contact</Link>
+              <button onClick={handleContClick}>Contact</button>
               {/* <Link to="/contact?mode=contact">Contact</Link> */}
             </li>
           </ul>
@@ -101,22 +116,6 @@ export default function Footers() {
           </ul>
         </div>
       </div>
-
-      {/* System Icons */}
-      {/* <div className="mt-10 flex justify-center items-center gap-12 text-center flex-wrap">
-        <div className="group hover:text-yellow-400 flex flex-col items-center cursor-pointer">
-          <MdOutlinePayment className="text-3xl mb-1" />
-          <p className="text-xs">Secure Payment</p>
-        </div>
-        <div className="group hover:text-gray-500 flex flex-col items-center cursor-pointer">
-          <MdDomainVerification className="text-3xl mb-1" />
-          <p className="text-xs">Verified System</p>
-        </div>
-        <div className="group hover:text-green-500 flex flex-col items-center cursor-pointer">
-          <BiSupport className="text-3xl mb-1" />
-          <p className="text-xs">24/7 Support</p>
-        </div>
-      </div> */}
 
       {/* Scroll-to-top */}
       {showScrollButton && (

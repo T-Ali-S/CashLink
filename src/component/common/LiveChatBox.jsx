@@ -13,34 +13,9 @@ import {
 export default function LiveChatBox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const storage = getStorage();
+  // const storage = getStorage();
   const bottomRef = useRef(null);
-  // const handleImageUpload = async (e) => {
-  //   const file = e.target.files[0];
-  //   if (!file) return;
-  //   console.log("📸 Selected file:", file);
 
-  //   const user = auth.currentUser;
-  //   if (!user) return;
-
-  //   const fileRef = sRef(
-  //     storage,
-  //     `chat_uploads/${user.uid}/${Date.now()}_${file.name}`
-  //   );
-  //   try {
-  //     await uploadBytes(fileRef, file);
-  //     const imageUrl = await getDownloadURL(fileRef);
-
-  //     await push(ref(db, `chats/${user.uid}`), {
-  //       from: "user",
-  //       content: imageUrl,
-  //       type: "image",
-  //       timestamp: Date.now(),
-  //     });
-  //   } catch (err) {
-  //     console.error("❌ Upload failed:", err);
-  //   }
-  // };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -50,9 +25,7 @@ export default function LiveChatBox() {
     if (!user) return;
 
     const formData = new FormData();
-    console.log("ENV TOKEN:", import.meta.env.VITE_UPLOAD_TOKEN);
     formData.append("file", file);
-    console.log("Token being sent:", import.meta.env.VITE_UPLOAD_TOKEN);
     // formData.append("token", process.env.REACT_APP_UPLOAD_TOKEN);
     // formData.append("token","my-super-secret-token" );
     formData.append("token", import.meta.env.VITE_UPLOAD_TOKEN);
@@ -164,11 +137,6 @@ export default function LiveChatBox() {
                 }`}
               >
                 {msg.type === "image" ? (
-                  // <img
-                  //   src={msg.content}
-                  //   alt="uploaded"
-                  //   className="max-w-full rounded-lg"
-                  // />
                   <a
                     href={msg.content}
                     target="_blank"

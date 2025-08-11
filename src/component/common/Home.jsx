@@ -69,13 +69,11 @@ export default function Home() {
         ref(db, `users/${currentUser.uid}/milestones/${userData?.package}`)
       );
       if (milestoneSnap.exists()) {
-        // console.log("📦 Refreshed Milestone Snapshot:", milestoneSnap.val());
       }
 
       const snap = await get(ref(db, `users/${currentUser.uid}`));
       if (snap.exists()) {
         const fresh = snap.val();
-        // console.log("🧾 Latest user snapshot from Firebase:", fresh);
         setUserData({ ...fresh, uid: currentUser.uid });
       }
     }
@@ -92,14 +90,6 @@ export default function Home() {
     }
   }, [location]);
 
-  //////update
-  // useEffect(() => {
-  //   const fetchLiveTotal = async () => {
-  //     const total = await getLiveTrackerTotal();
-  //     setLiveTotal(total);
-  //   };
-  //   fetchLiveTotal();
-  // }, []);
   useEffect(() => {
     const fetchLiveTotal = async () => {
       if (!auth.currentUser) return; // Guard after logout
@@ -120,21 +110,6 @@ export default function Home() {
   };
   const FinalrefNeed = 0;
 
-  /////1 updateEnd
-
-  /////2 updatestart
-  // useEffect(() => {
-  //   if (userData?.uid && userData?.package && milestone?.earned !== undefined) {
-  //     console.log(
-  //       `📊 Referral earned for ${userData.package.toUpperCase()}:`,
-  //       milestone.earned
-  //     );
-  //     // console.log(`Referral Needed ${FinalrefNeed}:`);
-
-  //   }
-  // }, [milestone?.earned, userData?.package, userData?.uid]);
-  /////2 updateEnd
-  //////3 updatestart
   useEffect(() => {
     async function logEarnedReferrals() {
       if (!userData?.uid || !userData?.package) return;
@@ -148,11 +123,8 @@ export default function Home() {
         (currPkgRefer[userData.package] || 0) - earned
       );
 
-      console.log(
-        `📊 Referral earned for ${userData.package.toUpperCase()}: ${earned}`
-      );
-      console.log(`🔢 Referral Needed: ${needed}`);
-      console.log(`👥 Valid referrals:`, validRefUIDs);
+      
+      
 
       setEarnedReferrals(earned);
       setReferralsNeeded(needed);
@@ -203,27 +175,28 @@ export default function Home() {
               autoplay={{ delay: 4000 }}
               loop={false}
               effect="fade"
+              // lazy={true}
               className="w-full h-full"
             >
               <SwiperSlide>
                 <img
-                  src="/assets/image1.png"
+                  src="/assets/image0.webp"
                   alt="Slide 1"
-                  className="w-full h-full object-cover object-top"
+                  className="  w-full h-full object-cover object-top"
                 />
               </SwiperSlide>
               <SwiperSlide>
                 <img
-                  src="/assets/image2.png"
+                  src="/assets/image2.webp"
                   alt="Slide 2"
-                  className="w-full h-full object-cover object-top"
+                  className=" w-full h-full object-cover object-top"
                 />
               </SwiperSlide>
               <SwiperSlide>
                 <img
-                  src="/assets/image3.png"
+                  src="/assets/image3.webp"
                   alt="Slide 3"
-                  className="w-full h-full object-cover object-top"
+                  className=" w-full h-full object-cover object-top"
                 />
               </SwiperSlide>
             </Swiper>

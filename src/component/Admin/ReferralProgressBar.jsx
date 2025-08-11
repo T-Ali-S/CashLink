@@ -28,7 +28,6 @@ export default function ReferralProgressBar({ milestone }) {
         {daysLeft > 0
           ? ` • ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`
           : " • Deadline passed"}
-          {/* {console.log(daysLeft)} */}
       </p>
     </div>
   );

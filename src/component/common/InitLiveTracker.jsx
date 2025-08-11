@@ -32,7 +32,7 @@ export default function InitLiveTracker() {
           goalEnd: 200000000,
           lastGoalAchievedAt: null,
         }).then(() => {
-          console.log("✅ liveTracker initialized by admin");
+          ""
         });
       }
     });

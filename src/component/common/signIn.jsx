@@ -13,11 +13,6 @@ export default function Signin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  // const [alert, setAlert] = useState({
-  //   visible: false,
-  //   message: "",
-  //   type: "success",
-  // });
   const { setAlert } = useContext(AlertContext);
   const [loading, setLoading] = useState(false);
   const db = getDatabase();
@@ -56,14 +51,12 @@ export default function Signin() {
         setLoading(false);
         return;
       }
-      console.log("User logged in with role:", data.role);
 
       setAlert({
         visible: true,
         message: "Login successful!",
         type: "success",
       });
-      console.log("🚀 Navigating to:", data.role === "admin" ? "/admin" : "/");
 navigate(data.role === "admin" ? "/admin" : "/");
 
 

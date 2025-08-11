@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { db } from "../../firebase";
 import { ref, get, update, push } from "firebase/database";
-import AdminLayout from "../Admin/AdminLayout";
+// import AdminLayout from "../Admin/AdminLayout";
 import { AlertContext } from "../context/AlertContext";
 
 export default function DistributeBonus() {

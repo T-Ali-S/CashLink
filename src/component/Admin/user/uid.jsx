@@ -37,7 +37,6 @@ export default function ManageUser() {
         const data = snapshot.val();
         setUserInfo(data);
         setSelectedPackage(data.package || "");
-        console.log("🆕 Selected package from DB:", data.package);
 
         if (data.referredBy) {
           const referrerSnap = await get(ref(db, `users/${data.referredBy}`));
@@ -78,8 +77,6 @@ export default function ManageUser() {
       };
       await push(ref(db, `notifications/${uid}`), newNotification);
     }
-
-    console.log("📣 Notifications sent to all users.");
   };
 
   const goalReferrals = {
@@ -113,9 +110,24 @@ export default function ManageUser() {
     if (!snapshot.exists()) return;
     const userData = snapshot.val();
 
+    // same package is activated again and again
+
+    // if (
+    //   userData.package &&
+    //   userData.package !== selected &&
+    //   !userData?.milestones?.[userData.package]?.rewarded
+    // ) {
+    //   return setAlert({
+    //     visible: true,
+    //     type: "error",
+    //     message: `❌ User already has "${userData.package}" active and it's not completed.`,
+    //   });
+    // }
+
+    // update same package can't be activated again if a package is active
+
     if (
       userData.package &&
-      userData.package !== selected &&
       !userData?.milestones?.[userData.package]?.rewarded
     ) {
       return setAlert({
@@ -154,7 +166,6 @@ export default function ManageUser() {
       [selected]: 0,
     };
     /////updated end for Elite logic
-
 
     const milestoneUpdatePayload = {
       package: selected,

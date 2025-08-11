@@ -30,7 +30,7 @@ export default function Navbar({ userData }) {
       setAlert({
         visible: true,
         type: "error",
-        message: "Sign in to contact us",
+        message: "Sign in to send Message.",
       });
       // navigate("/signup");
     }
@@ -327,22 +327,6 @@ export default function Navbar({ userData }) {
                 <Link to="/chat" className="block py-1 hover:text-yellow-600 ">
                   💬 Inbox
                 </Link>
-                {/* {userData?.role === "admin" && (
-                  <>
-                    <Link
-                      to="/admin/users"
-                      className="block py-1 hover:text-yellow-600"
-                    >
-                      Admin Panel
-                    </Link>
-                    <Link
-                      to="/distribute-bonus"
-                      className="block py-1 hover:text-yellow-600"
-                    >
-                      Distribute Bonuses
-                    </Link>
-                  </>
-                )} */}
                 <button
                   onClick={handleLogout}
                   className="mt-3 w-full text-left text-sm text-red-400 hover:text-white"

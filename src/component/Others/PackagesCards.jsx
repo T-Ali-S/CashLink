@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useContext} from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../firebase";
+import { AlertContext } from "../context/AlertContext";
 
 export default function PackagesCards() {
   const navigate = useNavigate();
+  const { setAlert } = useContext(AlertContext);
 
   function PackageCard({
     amount,
@@ -112,6 +114,19 @@ export default function PackagesCards() {
     );
   }
 
+  const handlePackageClick = () => {
+    const user = auth.currentUser;
+    if (user) {
+      navigate("/contact?mode=package");
+    } else {
+      setAlert({
+        visible: true,
+        type: "error",
+        message: "Please sign in to view package details",
+      });
+    }
+  };
+
   return (
     <section className="min-h-screen w-full px-4 sm:px-6 py-12 flex flex-col items-center mt-14 mb-14">
       <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-20 text-center text-gold100">
@@ -127,7 +142,8 @@ export default function PackagesCards() {
           nextDay={10}
           refer={5}
           total={6300}
-          onClick={() => navigate("/contact?mode=package")}
+          // onClick={() => navigate("/contact?mode=package")}
+          onClick={handlePackageClick}
         />
         <PackageCard
           tier="Silver"
@@ -136,7 +152,8 @@ export default function PackagesCards() {
           nextDay={10}
           refer={3}
           total={"10500"}
-          onClick={() => navigate("/contact?mode=package")}
+          // onClick={() => navigate("/contact?mode=package")}
+          onClick={handlePackageClick}
         />
         <PackageCard
           tier="Gold"
@@ -145,7 +162,8 @@ export default function PackagesCards() {
           nextDay={10}
           refer={2}
           total={"21000"}
-          onClick={() => navigate("/contact?mode=package")}
+          // onClick={() => navigate("/contact?mode=package")}
+          onClick={handlePackageClick}
         />
         <PackageCard
           tier="Platinum"
@@ -154,7 +172,8 @@ export default function PackagesCards() {
           nextDay={10}
           refer={2}
           total={"105000"}
-          onClick={() => navigate("/contact?mode=package")}
+          // onClick={() => navigate("/contact?mode=package")}
+          onClick={handlePackageClick}
         />
       </div>
 
@@ -164,7 +183,8 @@ export default function PackagesCards() {
           icon="/Medals/Elite.png"
           amount={100000}
           daily={1}
-          onClick={() => navigate("/contact?mode=package")}
+          // onClick={() => navigate("/contact?mode=package")}
+          onClick={handlePackageClick}
         />
       </div>
 

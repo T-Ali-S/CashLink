@@ -29,5 +29,4 @@ export async function simulateMilestoneUnlock(uid, pkg = "platinum") {
   });
 
   const result = await processROIandUnlock(uid);
-  console.log("✅ Simulated Milestone Unlock:", result);
 }
